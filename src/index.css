@@ -1,5 +1,15 @@
-body {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Reset básico */
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -7,7 +17,231 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Animación de spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Scrollbar personalizado con colores de comida */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fef7ee;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #f29442;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ed751d;
+}
+
+/* Checkbox personalizado */
+input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #f29442;
+}
+
+/* Mejoras para select */
+select {
+  cursor: pointer;
+}
+
+/* ========================
+   EFECTOS ESPECIALES DE COMIDA
+   ======================== */
+
+/* Efecto de tarjeta con profundidad (estilo plato) */
+.card-food {
+  @apply bg-white rounded-2xl shadow-lg;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.card-food:hover {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Borde de cocción (efecto caliente) */
+.border-cooking {
+  border: 2px solid #f29442;
+  position: relative;
+}
+
+.border-cooking::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px dashed #fcd34d;
+  border-radius: inherit;
+  opacity: 0.5;
+}
+
+/* Efecto de frescura (para estado normal) */
+.fresh-glow {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+
+/* Efecto de advertencia (para estado prioritario) */
+.warning-glow {
+  box-shadow: 0 0 15px rgba(248, 113, 113, 0.3);
+}
+
+/* Efecto de caduco */
+.expired-glow {
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+}
+
+/* Animación de pulse para estado fresco */
+@keyframes fresh-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+}
+
+.animate-fresh-pulse {
+  animation: fresh-pulse 2s ease-in-out infinite;
+}
+
+/* Animación de bounce para botones de comida */
+@keyframes food-bounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-3px) scale(1.02);
+  }
+  50% {
+    transform: translateY(0) scale(1);
+  }
+  75% {
+    transform: translateY(-1px) scale(1.01);
+  }
+}
+
+.animate-food-bounce {
+  animation: food-bounce 1s ease-in-out infinite;
+}
+
+/* Gradiente de fondo de cocina */
+.bg-kitchen {
+  background: 
+    linear-gradient(135deg, rgba(253, 251, 247, 0.95) 0%, rgba(254, 240, 213, 0.95) 100%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f29442' fill-opacity='0.08'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Botón con estilo de ingredientes */
+.btn-food {
+  @apply px-6 py-3 rounded-xl font-semibold transition-all duration-300;
+  background: linear-gradient(145deg, #ffffff 0%, #fef7ee 100%);
+  border: 2px solid #f29442;
+  color: #b8440f;
+}
+
+.btn-food:hover {
+  background: linear-gradient(145deg, #f29442 0%, #ed751d 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(242, 148, 66, 0.4);
+}
+
+/* Input con estilo de receta */
+.input-food {
+  @apply w-full px-4 py-3 rounded-xl border-2 transition-all duration-300;
+  background: linear-gradient(145deg, #ffffff 0%, #fdfbf7 100%);
+  border-color: #eeddb3;
+}
+
+.input-food:focus {
+  border-color: #f29442;
+  box-shadow: 0 0 0 4px rgba(242, 148, 66, 0.15);
+  outline: none;
+}
+
+/* Badge de estado con estilo de etiqueta */
+.badge-fresh {
+  @apply px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide;
+  background: linear-gradient(145deg, #dcfce7 0%, #bbf7d0 100%);
+  color: #15803d;
+}
+
+.badge-priority {
+  @apply px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide;
+  background: linear-gradient(145deg, #fee2e2 0%, #fecaca 100%);
+  color: #b91c1c;
+}
+
+.badge-expired {
+  @apply px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide;
+  background: linear-gradient(145deg, #7f1d1d 0%, #991b1b 100%);
+  color: #fef2f2;
+}
+
+/* Efecto de tabla estilo mantel */
+.table-food {
+  @apply w-full border-collapse;
+}
+
+.table-food th {
+  @apply text-left py-3 px-4 font-bold text-sm uppercase tracking-wider;
+  background: linear-gradient(180deg, #fdfbf7 0%, #f5ead4 100%);
+  color: #8d6b35;
+  border-bottom: 2px solid #eeddb3;
+}
+
+.table-food td {
+  @apply py-3 px-4 text-sm;
+  border-bottom: 1px solid #f5ead4;
+}
+
+.table-food tr:hover td {
+  background: linear-gradient(90deg, #fef7ee 0%, #fdfbf7 100%);
+}
+
+/* Decoración de esquina (estilo tarjeta de receta) */
+.corner-decoration::before {
+  content: '🥗';
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  font-size: 24px;
+}
+
+.corner-decoration::after {
+  content: '🍳';
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  font-size: 24px;
+}
+
+/* Fondo con patrón de cocina */
+.bg-food-pattern {
+  background-color: #fdfbf7;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(242, 148, 66, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 0L60 40H100L65 60L75 100L50 80L25 100L35 60L0 40H40L50 0Z' fill='%23f29442' fill-opacity='0.03'/%3E%3C/svg%3E");
 }
