@@ -3,15 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
 
-// Importar componentes de autenticación
+// Importar componentes
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import Recovery from './components/Auth/Recovery';
 import Inventory from './components/Ingredients/Inventory';
-
-// Importar nuevos componentes
 import MainMenu from './components/Main/MainMenu';
 import RegisterIngredient from './components/Ingredients/RegisterIngredient';
+import GenerateRecipe from './components/Recipes/GenerateRecipe';
+import RecipeResults from './components/Recipes/RecipeResults';
+import RecipeDetail from './components/Recipes/RecipeDetail';
 
 function App() {
   // Estado para controlar la vista actual
@@ -22,6 +23,11 @@ function App() {
 
   // Estado de carga
   const [loading, setLoading] = useState(true);
+
+  // Estados para pasar datos entre componentes de recetas
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [generatedRecipes, setGeneratedRecipes] = useState([]);
+  const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
 
   // Verificar si hay un usuario autenticado al cargar la app
   useEffect(() => {
@@ -85,7 +91,38 @@ function App() {
 
       case 'inventory':
         return <Inventory setCurrentView={setCurrentView} userId={user?.uid} />;
-    
+
+      case 'generate-recipe':
+        return (
+          <GenerateRecipe
+            setCurrentView={setCurrentView}
+            userId={user?.uid}
+            setGeneratedRecipes={setGeneratedRecipes}
+            setCurrentRecipeIndex={setCurrentRecipeIndex}
+          />
+        );
+
+      case 'recipe-results':
+        return (
+          <RecipeResults
+            setCurrentView={setCurrentView}
+            recipes={generatedRecipes}
+            currentIndex={currentRecipeIndex}
+            setCurrentIndex={setCurrentRecipeIndex}
+            setSelectedRecipe={setSelectedRecipe}
+            setGeneratedRecipes={setGeneratedRecipes}
+          />
+        );
+
+      case 'recipe-detail':
+        return (
+          <RecipeDetail
+            setCurrentView={setCurrentView}
+            recipe={selectedRecipe}
+            userId={user?.uid}
+          />
+        );
+
       default:
         return <Login setCurrentView={setCurrentView} />;
     }

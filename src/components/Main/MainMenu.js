@@ -66,16 +66,21 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
             <div className="absolute -bottom-2 -right-2 text-2xl opacity-50">🥬</div>
           </button>
 
-          {/* Botones deshabilitados - Próximamente */}
-          <div className="card-food p-8 opacity-60 cursor-not-allowed relative overflow-hidden">
-            <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 mx-auto">
+          <button
+            onClick={() => setCurrentView('generate-recipe')}
+            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden">
+            {/* Efecto de hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            
+            <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">{FOOD_ICONS.recipes}</span>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Generar Recetas</h3>
-            <p className="text-gray-500 text-center text-sm">¡Próximamente!</p>
+            <p className="text-gray-500 text-center text-sm">Crea recetas con tus ingredientes</p>
             <div className="absolute -bottom-2 -right-2 text-2xl opacity-30">🍳</div>
-          </div>
+          </button>
 
+          {/* Botones deshabilitados - Próximamente */}
           <div className="card-food p-8 opacity-60 cursor-not-allowed relative overflow-hidden">
             <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 mx-auto">
               <span className="text-4xl">{FOOD_ICONS.stored}</span>

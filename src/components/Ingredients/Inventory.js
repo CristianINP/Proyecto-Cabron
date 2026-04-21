@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { Edit2, Trash2, ArrowLeft } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
 import { isPriority, isExpired, formatDate } from '../../utils/dateCalculations';
 import { searchFood } from '../../services/foodDatabase';
 import Modal from '../../utils/Modal';
@@ -268,7 +268,6 @@ const Inventory = ({ setCurrentView, userId }) => {
           onClick={() => setCurrentView('menu')}
           className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
         >
-          <ArrowLeft size={20} />
           ← Volver al menú
         </button>
 

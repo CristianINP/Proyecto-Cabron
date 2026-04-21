@@ -153,7 +153,7 @@ const Login = ({ setCurrentView }) => {
           </div>
           
           <div className="text-center text-sm text-cream-700">
-            ¿No tienes cuenta?{' '}
+            ¿No tienes cuenta? - {' '}
             <button 
               type="button"
               onClick={() => setCurrentView('register')}
