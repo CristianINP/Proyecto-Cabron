@@ -5,6 +5,7 @@ import { db } from '../../services/firebase';
 import { Search, ChefHat, AlertTriangle } from 'lucide-react';
 import { isPriority, isExpired, getDaysRemaining } from '../../utils/dateCalculations';
 import { generateRecipe } from '../../services/openaiService';
+import { formatQuantity } from '../../utils/recipeHelpers';
 
 const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurrentRecipeIndex }) => {
   const [ingredients, setIngredients] = useState([]);
@@ -18,7 +19,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
   const [error, setError] = useState('');
   const [errorType, setErrorType] = useState('');
 
-  
   // Opciones de receta
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [mealTime, setMealTime] = useState('Comida');
@@ -113,7 +113,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
       ? priorityIngredients.map(ing => ing.id)
       : selectedIngredients;
 
-      
     if (ingredientsToUse.length === 0 && selectedDishes.length === 0) {
       setError('Por favor selecciona al menos un ingrediente o platillo almacenado');
       setErrorType('validation');
@@ -153,42 +152,47 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
         }))
       ];
 
+      const params = {
+        ingredients: allItems,
+        categories: selectedCategories,
+        mealTime,
+        servings,
+        priorityOnly
+      };
+
+      // Guardar parámetros en sessionStorage (para regeneración)
+      sessionStorage.setItem('lastRecipeParams', JSON.stringify(params));
+
       // Generar recetas con OpenAI
-      const recipes = await generateRecipe({
-      ingredients: allItems,
-      categories: selectedCategories,
-      mealTime,
-      servings,
-      priorityOnly
-    });
+      const recipes = await generateRecipe(params);
 
-    sessionStorage.setItem('lastRecipeParams', JSON.stringify({
-      ingredients: allItems,
-      categories: selectedCategories,
-      mealTime,
-      servings,
-      priorityOnly
-    }));
-
-    setGeneratedRecipes(recipes);
-    setCurrentRecipeIndex(0);
-    setCurrentView('recipe-results');
+      setGeneratedRecipes(recipes);
+      setCurrentRecipeIndex(0);
+      setCurrentView('recipe-results');
 
     } catch (error) {
       console.error('Error al generar recetas:', error);
       
-      // ✅ MOSTRAR EL ERROR AL USUARIO EN EL FRONTEND
-      if (error.message && error.message.includes('No es posible')) {
-        // Error de categorías incompatibles
-        setError(error.message);
+      // Manejar errores de compatibilidad de IA
+      if (error.isCompatibilityError || (error.message && error.message.includes('No es posible generar una receta'))) {
+        setError(error.message || 'No es posible generar una receta con las categorías seleccionadas.');
         setErrorType('ai');
+      } else if (error.isAIError) {
+        setError(error.message || 'Error al generar la receta con la IA.');
+        setErrorType('ai');
+      } else if (error.status === 429) {
+        setError('Límite de uso de IA alcanzado. Por favor, espera un momento e intenta de nuevo.');
+        setErrorType('technical');
+      } else if (error.status >= 500 || !error.status) {
+        setError('Error temporal de conexión. Por favor, intenta de nuevo.');
+        setErrorType('technical');
       } else {
-        // Error genérico
-        setError('Error al generar recetas. Verifica tu conexión y API key de OpenAI.');
-        setErrorType('ai');
+        setError(error.message || 'Error al generar recetas. Verifica tu conexión y configuración.');
+        setErrorType('technical');
       }
     } finally {
       setGenerating(false);
+      setGeneratingMode('');
     }
   };
 
@@ -269,7 +273,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                       <div>
                         <p className="font-semibold text-gray-800 text-sm">{ing.name}</p>
                         <p className="text-xs text-red-600 font-medium">
-                          {parseFloat(ing.quantity).toFixed(2)} {ing.unit}
+                          {formatQuantity(ing.quantity, 2)} {ing.unit}
                         </p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -311,7 +315,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                       <div>
                         <p className="font-semibold text-gray-800 text-sm">{ing.name}</p>
                         <p className="text-xs text-gray-500 font-medium">
-                          {parseFloat(ing.quantity).toFixed(2)} {ing.unit}
+                          {formatQuantity(ing.quantity, 2)} {ing.unit}
                         </p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
@@ -355,7 +359,9 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-semibold text-gray-800 text-sm">{dish.name}</p>
-                          <p className={`text-xs font-medium ${isExpiringSoon ? 'text-red-600' : 'text-orange-600'}`}>
+                          <p className={`text-xs font-medium ${
+                            isExpiringSoon ? 'text-red-600' : 'text-orange-600'
+                          }`}>
                             Caduca en {dish.daysRemaining} días
                           </p>
                         </div>
@@ -377,7 +383,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               </div>
             </div>
           )}
-          
+
           {/* Mensaje si no hay ingredientes disponibles */}
           {ingredients.length === 0 && pendingDishes.length === 0 && (
             <div className="text-center py-12 bg-white/60 rounded-2xl mb-6 border-2 border-dashed border-food-200">
@@ -405,7 +411,11 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {categories.map(cat => (
-                  <label key={cat} onClick={() => toggleCategory(cat)} className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-food-50 transition border border-transparent hover:border-food-200">
+                  <label 
+                    key={cat} 
+                    onClick={() => toggleCategory(cat)} 
+                    className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-food-50 transition border border-transparent hover:border-food-200"
+                  >
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                       selectedCategories.includes(cat)
                         ? 'border-food-500 bg-food-500'
@@ -447,7 +457,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                 min="1"
                 max="20"
                 value={servings}
-                onChange={(e) => setServings(parseInt(e.target.value))}
+                onChange={(e) => setServings(parseInt(e.target.value) || 2)}
                 className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all"
               />
             </div>
@@ -464,6 +474,11 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                 {errorType === 'ai' && (
                   <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">
                     💡 Intenta ajustar las categorías seleccionadas o usar ingredientes diferentes.
+                  </p>
+                )}
+                {errorType === 'technical' && (
+                  <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">
+                    💡 Error técnico. Verifica tu conexión a internet o inténtalo más tarde.
                   </p>
                 )}
               </div>

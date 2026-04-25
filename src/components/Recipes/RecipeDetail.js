@@ -5,10 +5,11 @@ import { db } from '../../services/firebase';
 import { calculateDishShelfLife } from '../../services/openaiService';
 import { Check, Clock, BookOpen } from 'lucide-react';
 import Modal from '../../utils/Modal';
+import { formatQuantity, parseSafeQuantity } from '../../utils/recipeHelpers';
 
 const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const [usedIngredients, setUsedIngredients] = useState(
-    recipe.ingredients?.map(ing => ({ 
+    recipe?.ingredients?.map(ing => ({ 
       ...ing, 
       used: true,
       usedQuantity: ing.quantity,
@@ -67,23 +68,31 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
     ));
   };
 
+  /**
+   * Maneja el cambio temporal de cantidad (antes de validar)
+   */
   const handleTempChange = (index, value) => {
     setUsedIngredients(usedIngredients.map((ing, i) =>
       i === index ? { ...ing, usedQuantity: value } : ing
     ));
   };
 
+  /**
+   * Valida la cantidad al perder el foco
+   */
   const handleQuantityBlur = (index) => {
-    const value = parseFloat(usedIngredients[index].usedQuantity);
-
-    if (isNaN(value) || value < 0.25) {
+    const value = usedIngredients[index].usedQuantity;
+    const parsed = parseSafeQuantity(value);
+    
+    // Si no es numérico o es inválido, ajustar
+    if (parsed.type !== 'number' || isNaN(parsed.number) || parsed.number < 0.25) {
       showModal(
         'error',
         'Cantidad inválida',
         'La cantidad mínima permitida es 0.25. Se ajustará automáticamente.',
         () => {
           setUsedIngredients(usedIngredients.map((ing, i) =>
-            i === index ? { ...ing, usedQuantity: 0.25 } : ing
+            i === index ? { ...ing, usedQuantity: '0.25' } : ing
           ));
         }
       );
@@ -109,7 +118,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             collection(db, `users/${userId}/ingredients`)
           );
           
-          const usedIngredientsReport = []; // Para mostrar al final
+          const usedIngredientsReport = [];
           
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
@@ -121,7 +130,10 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
-              const quantityUsed = parseFloat(ing.usedQuantity) || 0;
+              // Parse seguro de cantidad
+              const quantityUsed = parseSafeQuantity(ing.usedQuantity).type === 'number' 
+                ? parseFloat(ing.usedQuantity) 
+                : 0;
               const newQuantity = currentData.quantity - quantityUsed;
               
               if (newQuantity <= 0) {
@@ -206,7 +218,6 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
       async () => {
         setSaving(true);
         try {
-          // Actualizar inventario (igual que en handleMarkAsCompleted)
           const ingredientsSnapshot = await getDocs(
             collection(db, `users/${userId}/ingredients`)
           );
@@ -223,7 +234,9 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
-              const quantityUsed = parseFloat(ing.usedQuantity) || 0;
+              const quantityUsed = parseSafeQuantity(ing.usedQuantity).type === 'number' 
+                ? parseFloat(ing.usedQuantity) 
+                : 0;
               const newQuantity = currentData.quantity - quantityUsed;
               
               if (newQuantity <= 0) {
@@ -236,7 +249,6 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                   isFractioned
                 };
 
-                // Actualizar fecha de caducidad si es Piezas y se vuelve fraccionado
                 if (currentData.unit === 'Piezas' && isFractioned && !currentData.isFractioned) {
                   const { searchFood } = await import('../../services/foodDatabase');
                   const food = searchFood(currentData.name);
@@ -258,7 +270,6 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           let daysRemaining = 3;
           
           try {
-            // Solo pasar los nombres de los ingredientes, ChatGPT calculará la vida útil
             const ingredientNames = recipe.ingredients.map(ing => ({
               name: ing.name
             }));
@@ -343,11 +354,13 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         <div className="card-food rounded-2xl p-8">
           <div className="text-center mb-6">
             <div className="inline-block text-5xl mb-3 animate-bounce">🍳</div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-4 font-cooking">{recipe.name}</h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-4 font-cooking">
+              {recipe.name || 'Receta sin nombre'}
+            </h2>
           </div>
           
           <div className="flex flex-wrap gap-2 justify-center mb-6">
-            {recipe.categories?.map((cat, idx) => (
+            {Array.isArray(recipe.categories) && recipe.categories.map((cat, idx) => (
               <span 
                 key={idx}
                 className="bg-food-100 text-food-700 px-4 py-2 rounded-full text-sm font-bold"
@@ -404,7 +417,9 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                     
                     <div className="text-right bg-food-50 px-3 py-2 rounded-lg">
                       <p className="text-xs text-gray-500 font-medium">Receta sugiere:</p>
-                      <p className="text-sm text-food-700 font-bold">{parseFloat(ing.quantity).toFixed(2)} {ing.unit}</p>
+                      <p className="text-sm text-food-700 font-bold">
+                        {formatQuantity(ing.quantity, 2)} {ing.unit || ''}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -412,21 +427,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             </div>
           </div>
           
-          {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
-            <div className="mb-6 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
-              <h3 className="text-lg font-bold text-yellow-800 mb-3 flex items-center gap-2">
-                <span className="text-xl">🛒</span> Ingredientes adicionales necesarios
-              </h3>
-              <ul className="space-y-2">
-                {recipe.missingIngredients.map((ing, idx) => (
-                  <li key={idx} className="text-yellow-700 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                    <span className="font-medium">{parseFloat(ing.quantity).toFixed(2)} {ing.unit}</span> de <span className="font-bold">{ing.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {missingIngredientsSection(recipe.missingIngredients)}
           
           <div className="mb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -434,7 +435,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             </h3>
             <div className="bg-white/60 rounded-xl p-4 border-2 border-food-100">
               <ol className="space-y-4">
-                {recipe.instructions?.map((instruction, idx) => (
+                {Array.isArray(recipe.instructions) && recipe.instructions.map((instruction, idx) => (
                   <li key={idx} className="flex gap-3">
                     <div className="flex-shrink-0 w-8 h-8 bg-food-500 text-white rounded-full flex items-center justify-center font-bold">
                       {idx + 1}
@@ -453,7 +454,9 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
               </div>
               <div>
                 <p className="text-sm text-food-600 font-medium">Tiempo de preparación</p>
-                <p className="text-2xl font-bold text-food-800">{recipe.prepTime} <span className="text-base font-normal">minutos</span></p>
+                <p className="text-2xl font-bold text-food-800">
+                  {recipe.prepTime} <span className="text-base font-normal">minutos</span>
+                </p>
               </div>
             </div>
           )}
@@ -491,5 +494,46 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
     </div>
   );
 };
+
+/**
+ * Sección de ingredientes faltantes con validación segura
+ */
+function missingIngredientsSection(missingIngredients) {
+  if (!Array.isArray(missingIngredients) || missingIngredients.length === 0) {
+    return null;
+  }
+
+  const validIngredients = missingIngredients.filter(ing => ing && ing.name);
+  
+  if (validIngredients.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+      <h3 className="text-lg font-bold text-yellow-800 mb-3 flex items-center gap-2">
+        <span className="text-xl">🛒</span> Ingredientes adicionales necesarios
+      </h3>
+      <ul className="space-y-2">
+        {validIngredients.map((ing, idx) => (
+                  <li key={idx} className="text-yellow-700 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                    {formatQuantity(ing.quantity) !== 'Al gusto' && formatQuantity(ing.quantity) !== '' ? (
+                      <>
+                        <span className="font-medium">{formatQuantity(ing.quantity)} {ing.unit || ''} de </span>
+                        <span className="font-bold">{ing.name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">Al gusto de </span>
+                        <span className="font-bold">{ing.name}</span>
+                      </>
+                    )}
+                  </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default RecipeDetail;

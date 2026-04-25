@@ -1,7 +1,26 @@
 // src/services/openaiService.js
 import axios from 'axios';
+import {
+  normalizeOpenAIResponse,
+  retryOperation
+} from '../utils/recipeHelpers';
 
 const API_URL = 'http://localhost:3001/openai';
+
+/**
+ * Verifica si un error es de un tipo que merece reintento
+ * @param {Error} error - Error a verificar
+ * @returns {boolean} - True si debe reintentar
+ */
+const isTemporaryError = (error) => {
+  const status = error.response?.status || error.status;
+  // Reintentar en errores de servidor, rate limiting o timeout
+  if (!status) return true; // Error de red
+  if (status >= 500) return true; // Errores del servidor
+  if (status === 429) return true; // Rate limit
+  if (status >= 400 && status < 500 && status !== 422) return false; // Errores cliente (422 validación puede que sí)
+  return false;
+};
 
 export const generateRecipe = async ({
   ingredients,
@@ -63,7 +82,7 @@ export const generateRecipe = async ({
     3. Lista de ingredientes faltantes (TODO lo que necesites pero no esté disponible)
     4. Pasos de preparación numerados y detallados
     5. Tiempo estimado de preparación en minutos
-    6. Si la receta no puede ajustarse exactamente a ${servings} personas por la naturaleza de los ingredientes, indícalo
+    6. Si la receta no puede ajustarse exactamente a ${servings} personas por la naturaleza de los ingredientes, indícalo en "portionWarning"
 
     Formato de respuesta en JSON:
 
@@ -98,98 +117,159 @@ export const generateRecipe = async ({
     - No uses bloques de codigo.
     - No incluyas texto explicativo.`;
 
-    // Hacer petición con Axios
-    const response = await axios.post(API_URL, {
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `
-            Responde EXCLUSIVAMENTE con JSON valido.
-            No escribas texto fuera del JSON.
-            No incluyas comentarios ni explicaciones.`
+    // Hacer petición con reintentos automáticos
+    const makeRequest = async () => {
+      const response = await axios.post(API_URL, {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `
+              Responde EXCLUSIVAMENTE con JSON valido.
+              No escribas texto fuera del JSON.
+              No incluyas comentarios ni explicaciones.`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: regenerate ? 0.75 : 0.6,
+        top_p: 0.95,
+        presence_penalty: regenerate ? 0.8 : 0.2,
+        frequency_penalty: regenerate ? 0.6 : 0.2,
+        max_tokens: 700
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: regenerate ? 0.75 : 0.6,
-      top_p: 0.95,
-      presence_penalty: regenerate ? 0.8 : 0.2,
-      frequency_penalty: regenerate ? 0.6 : 0.2,
-      max_tokens: 700
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+        timeout: 30000
+      });
+
+      // Verificar errores HTTP de OpenAI
+      if (response.status >= 400) {
+        const error = new Error(response.data?.error?.message || `Error HTTP ${response.status}`);
+        error.status = response.status;
+        error.response = response;
+        throw error;
       }
+
+      const content = response.data.choices?.[0]?.message?.content?.trim();
+
+      if (!content) {
+        throw new Error('Respuesta vacía de OpenAI');
+      }
+
+      // Extraer solo el primer JSON valido
+      const jsonMatch = content.match(/\{[\s\S]*\}$/);
+
+      if (!jsonMatch) {
+        console.error('Respuesta cruda de OpenAI:', content);
+        throw new Error('No se encontró un JSON válido en la respuesta.');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        console.error('JSON malformado:', jsonMatch[0]);
+        throw new Error('JSON inválido en la respuesta.');
+      }
+
+      return result;
+    };
+
+    const result = await retryOperation(makeRequest, {
+      maxRetries: 2,
+      initialDelay: 500,
+      shouldRetry: isTemporaryError
     });
 
-    const content = response.data.choices[0].message.content.trim();
-
-    // Extraer solo el primer JSON valido
-    const jsonMatch = content.match(/\{[\s\S]*\}$/);
-
-    if (!jsonMatch) {
-      console.error('Respuesta cruda de OpenAI:', content);
-      throw new Error('No se encontro un JSON valido en la respuesta.');
-    }
-
-    let result;
-    try {
-      result = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      console.error('JSON malformado:', jsonMatch[0]);
-      throw new Error('JSON invalido.');
-    }
-
-    // Verificar si hay un error de compatibilidad
+    // Verificar si hay un error de compatibilidad en la respuesta
     if (result.error) {
-      throw new Error(result.error);
+      const error = new Error(result.error);
+      error.isAIError = true;
+      error.isCompatibilityError = result.error.includes('No es posible generar una receta');
+      throw error;
+    }
+
+    // Normalizar la respuesta
+    const normalized = normalizeOpenAIResponse(result);
+
+    if (!normalized.isValid) {
+      const error = new Error(normalized.error || 'Error al procesar la respuesta de la IA');
+      error.isAIError = true;
+      throw error;
+    }
+
+    // Garantizar que portionWarning sea null o string limpio
+    if (normalized.recipe) {
+      normalized.recipe.portionWarning = normalized.portionWarning;
     }
     
-    return result.recipe;
+    return [normalized.recipe];
   } catch (error) {
     console.error('Error al generar receta:', error);
+    // Re-lanzar para que lo maneje el frontend
     throw error;
   }
 };
 
 export const calculateDishShelfLife = async (ingredients) => {
   try {
-    // Crear lista de ingredientes solo con nombres
-    const ingredientsList = ingredients.map(ing => ing.name).join(', ');
+    const makeRequest = async () => {
+      // Crear lista de ingredientes solo con nombres
+      const ingredientsList = ingredients.map(ing => ing.name).join(', ');
 
-    const prompt = `Como experto en seguridad alimentaria, calcula cuántos días se puede almacenar de forma segura en refrigeración un platillo preparado con estos ingredientes: ${ingredientsList}.
+      const prompt = `Como experto en seguridad alimentaria, calcula cuántos días se puede almacenar de forma segura en refrigeración un platillo preparado con estos ingredientes: ${ingredientsList}.
 
-Considera el ingrediente más perecedero una vez COCIDO/PREPARADO y las normas de seguridad alimentaria estándar para alimentos cocinados refrigerados.
+      Considera el ingrediente más perecedero una vez COCIDO/PREPARADO y las normas de seguridad alimentaria estándar para alimentos cocinados refrigerados.
 
-Responde ÚNICAMENTE con un número entero (días), sin texto adicional.`;
+      Responde ÚNICAMENTE con un número entero (días), sin texto adicional.`;
 
-    // Hacer petición con Axios
-    const response = await axios.post(API_URL, {
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'Eres un experto en seguridad alimentaria. Respondes SOLO con números enteros.'
+      const response = await axios.post(API_URL, {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Eres un experto en seguridad alimentaria. Respondes SOLO con números enteros.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 10
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
         },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 10
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+        timeout: 30000
+      });
 
-    const days = parseInt(response.data.choices[0].message.content.trim());
+      if (response.status >= 400) {
+        const error = new Error(response.data?.error?.message || `Error HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+
+      const days = parseInt(response.data.choices?.[0]?.message?.content?.trim());
+      
+      if (isNaN(days) || days < 1 || days > 14) {
+        throw new Error('Día inválido');
+      }
+
+      return days;
+    };
+
+    const days = await retryOperation(makeRequest, {
+      maxRetries: 2,
+      initialDelay: 500,
+      shouldRetry: isTemporaryError
+    });
     
-    return isNaN(days) ? 3 : days; // Default 3 días si no se puede parsear
+    return days;
   } catch (error) {
     console.error('Error al calcular vida útil del platillo:', error);
     return 3; // Default en caso de error
