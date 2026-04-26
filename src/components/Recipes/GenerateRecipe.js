@@ -354,7 +354,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/60 rounded-xl p-4 border-2 border-food-100 md:col-span-2 lg:col-span-3">
               <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                <span className="text-lg">🏷️</span> Categorías (selecciona varias)
+                <span className="text-lg">🏷️</span> Categorías
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {categories.map(cat => (
@@ -376,7 +376,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             
             <div className="bg-white/60 rounded-xl p-4 border-2 border-food-100">
               <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                <span className="text-lg">🕐</span> Horario
+                <span className="text-lg">🕐</span> Momento de Alimentación
               </label>
               <select value={mealTime} onChange={(e) => setMealTime(e.target.value)} className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all">
                 <option>Desayuno</option>
@@ -399,7 +399,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               <div>
                 <p className="font-bold mb-1">Error</p>
                 <p className="text-red-600">{error}</p>
-                {errorType === 'ai' && <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">💡 Intenta ajustar las categorías seleccionadas o usar ingredientes diferentes.</p>}
+                {errorType === 'ai' && <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-black-500">💡 Intenta ajustar las categorías seleccionadas o usar ingredientes diferentes.</p>}
                 {errorType === 'technical' && <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">💡 Error técnico. Verifica tu conexión o inténtalo más tarde.</p>}
               </div>
             </div>

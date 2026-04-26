@@ -211,7 +211,7 @@ const RecipeResults = ({
                     {currentRecipe.servings || 2}
                   </p>
                   <p className="text-xs text-gray-600 font-medium">
-                    {currentRecipe.servings === 1 ? 'persona' : 'personas'}
+                    {currentRecipe.servings === 1 ? 'Persona' : 'Personas'}
                   </p>
                 </div>
               </div>

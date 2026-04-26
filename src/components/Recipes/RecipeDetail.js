@@ -316,7 +316,7 @@ function missingIngredientsSection(missingIngredients) {
   if (validIngredients.length === 0) return null;
   return (
     <div className="mb-6 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
-      <h3 className="text-lg font-bold text-yellow-800 mb-3 flex items-center gap-2"><span className="text-xl">🛒</span> Ingredientes adicionales necesarios</h3>
+      <h3 className="text-lg font-bold text-yellow-800 mb-3 flex items-center gap-2"><span className="text-xl">🛒</span> Ingredientes Adicionales Necesarios</h3>
       <ul className="space-y-2">
         {validIngredients.map((ing, idx) => (
           <li key={idx} className="text-yellow-700 flex items-center gap-2">
@@ -329,7 +329,6 @@ function missingIngredientsSection(missingIngredients) {
           </li>
         ))}
       </ul>
-      <p className="text-sm mt-3 pt-3 border-t border-gray-200">Selecciona los que usaste del inventario y ajusta las cantidades.</p>
     </div>
   );
 }

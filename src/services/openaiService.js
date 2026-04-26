@@ -151,20 +151,70 @@ export const generateRecipe = async ({
       ? `\n\nRECETAS YA GENERADAS (NO REPITAS NOMBRES): ${usedRecipeNames.join(', ')}`
       : '';
 
-    const prompt = `Eres un chef experto. Genera 1 receta usando estos ingredientes: ${ingredientsList}.
+    const prompt = `Eres un chef experto. Genera 1 receta usando estos ingredientes DISPONIBLES EN EL INVENTARIO: ${ingredientsList}.
+
     ${categoriesText}
     Horario: ${mealTime}
-    Porciones: ${servings}
-    ${priorityOnly ? 'Prioriza usar TODOS los ingredientes.' : ''}
+    Porciones: ${servings} personas
+    ${priorityOnly ? 'IMPORTANTE: Prioriza el uso de TODOS los ingredientes disponibles.' : ''}
     ${regenerateText}
     ${usedNamesText}
 
-    REGLAS:
-    1. Si categorías son incompatibles con ingredientes, responde {"error": "..."}
-    2. Solo responde con JSON. Nada más. Sin explicaciones.
-    3. Formato de cantidades no numéricas: "Al gusto", "Una pizca" (con mayúscula).
-    
-    JSON de salida:`;
+    REGLAS CRÍTICAS:
+    1. Si las categorías seleccionadas son incompatibles con los ingredientes disponibles (por ejemplo, "Vegetariana" pero hay carne, o "Vegana" pero hay lácteos/huevos), debes responder con un mensaje de error en lugar de generar una receta.
+    2. Si no es posible crear una receta que cumpla con TODAS las categorías seleccionadas simultáneamente, responde con un mensaje de error explicando la incompatibilidad.
+    3. Solo genera la receta si todos los ingredientes disponibles son compatibles con todas las categorías seleccionadas.
+
+    SEPARACIÓN DE INGREDIENTES (MUY IMPORTANTE):
+    - En "ingredients": SOLO incluye los ingredientes que están en la lista de DISPONIBLES arriba.
+    - En "missingIngredients": incluye CUALQUIER ingrediente que necesites pero NO esté en la lista de disponibles (sal, aceite, harina, azúcar, especias, condimentos, miel, etc.) y que cada ingrediente empiece con MAYÚSCULA.
+    - Si un ingrediente NO está en la lista de disponibles, DEBE ir en "missingIngredients", sin excepción.
+
+    FORMATO DE CANTIDADES (MUY IMPORTANTE):
+    - Si la cantidad de un ingrediente NO es un número (por ejemplo: "al gusto", "una pizca", "suficiente"), la primera letra DEBE ir en MAYÚSCULA.
+    - Ejemplos correctos: "Al gusto", "Una pizca", "Suficiente".
+    - NUNCA escribas cantidades no numéricas en minúsculas.
+
+    Para recetas válidas proporciona:
+    1. Nombre atractivo de la receta
+    2. Lista de ingredientes (SOLO los disponibles) con cantidades exactas ajustadas a ${servings} personas
+    3. Lista de ingredientes faltantes (TODO lo que necesites pero no esté disponible)
+    4. Pasos de preparación numerados y detallados
+    5. Tiempo estimado de preparación en minutos
+    6. Si la receta no puede ajustarse exactamente a ${servings} personas por la naturaleza de los ingredientes, indícalo en "portionWarning"
+
+    Formato de respuesta en JSON:
+
+    Para ERROR (categorías incompatibles):
+    {
+      "error": "No es posible generar una receta [categoría] con los ingredientes seleccionados. [Explicación específica del conflicto]"
+    }
+
+    Para receta VÁLIDA:
+    {
+      "recipe": [
+        {
+          "name": "Nombre de la receta",
+          "categories": ["categoria1", "categoria2"],
+          "ingredients": [
+            {"name": "ingrediente", "quantity": "cantidad", "unit": "unidad"}
+          ],
+          "missingIngredients": [
+            {"name": "ingrediente", "quantity": "cantidad", "unit": "unidad"}
+          ],
+          "instructions": ["paso 1", "paso 2", ...],
+          "prepTime": 30,
+          "servings": ${servings},
+          "portionWarning": "Texto de advertencia si aplica o null"
+        }
+      ]
+    }
+      
+    ⚠️ RESPUESTA FINAL OBLIGATORIA:
+    - Devuelve SOLO el JSON.
+    - No escribas texto antes ni después.
+    - No uses bloques de codigo.
+    - No incluyas texto explicativo.`;
 
     const makeRequest = async () => {
       const response = await axios.post(API_URL, {
