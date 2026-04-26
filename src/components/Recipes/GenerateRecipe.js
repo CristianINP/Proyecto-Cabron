@@ -15,11 +15,10 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [generatingMode, setGeneratingMode] = useState(''); // 'ia' or 'priority'
+  const [generatingMode, setGeneratingMode] = useState('');
   const [error, setError] = useState('');
   const [errorType, setErrorType] = useState('');
 
-  // Opciones de receta
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [mealTime, setMealTime] = useState('Comida');
   const [servings, setServings] = useState(2);
@@ -36,30 +35,19 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
 
   const loadData = async () => {
     try {
-      // Cargar ingredientes (solo los NO caducados)
       const ingredientsSnapshot = await getDocs(collection(db, `users/${userId}/ingredients`));
       const ingredientsData = ingredientsSnapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
+        .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(ing => !isExpired(ing.expirationDate));
-      
       setIngredients(ingredientsData);
 
-      // Cargar platillos pendientes (solo los NO caducados)
       const dishesSnapshot = await getDocs(collection(db, `users/${userId}/pendingDishes`));
       const dishesData = dishesSnapshot.docs
         .map(doc => {
           const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            daysRemaining: getDaysRemaining(data.expirationDate) || 0
-          };
+          return { id: doc.id, ...data, daysRemaining: getDaysRemaining(data.expirationDate) || 0 };
         })
         .filter(dish => !isExpired(dish.expirationDate));
-      
       setPendingDishes(dishesData);
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -69,11 +57,9 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
     }
   };
 
-  // Separar ingredientes prioritarios y normales
   const priorityIngredients = ingredients.filter(ing => isPriority(ing.expirationDate));
   const normalIngredients = ingredients.filter(ing => !isPriority(ing.expirationDate));
 
-  // Filtrar por búsqueda
   const filteredPriority = priorityIngredients.filter(ing =>
     ing.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -108,7 +94,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
   const handleGenerate = async (priorityOnly = false) => {
     setError('');
 
-    // Validaciones
     let ingredientsToUse = priorityOnly 
       ? priorityIngredients.map(ing => ing.id)
       : selectedIngredients;
@@ -138,19 +123,13 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
         selectedDishes.includes(dish.id)
       );
 
-      // Combinar ingredientes y platillos
-      const allItems = [
-        ...selectedIngredientsData.map(ing => ({
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit
-        })),
-        ...selectedDishesData.map(dish => ({
-          name: dish.name,
-          quantity: '1',
-          unit: 'porción'
-        }))
-      ];
+      // ✅ CRUCIAL: Combinar SOLO ingredientes sueltos. 
+      // Los platillos NO van aquí, para que la IA no los trate como ingredientes a descontar del inventario.
+      const allItems = selectedIngredientsData.map(ing => ({
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit
+      }));
 
       const params = {
         ingredients: allItems,
@@ -160,10 +139,8 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
         priorityOnly
       };
 
-      // Guardar parámetros en sessionStorage (para regeneración)
       sessionStorage.setItem('lastRecipeParams', JSON.stringify(params));
 
-      // Generar recetas con OpenAI
       const recipes = await generateRecipe(params);
 
       setGeneratedRecipes(recipes);
@@ -173,12 +150,8 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
     } catch (error) {
       console.error('Error al generar recetas:', error);
       
-      // Manejar errores de compatibilidad de IA
-      if (error.isCompatibilityError || (error.message && error.message.includes('No es posible generar una receta'))) {
+      if (error.isCompatibilityError || (error.message && error.message.includes('No es posible'))) {
         setError(error.message || 'No es posible generar una receta con las categorías seleccionadas.');
-        setErrorType('ai');
-      } else if (error.isAIError) {
-        setError(error.message || 'Error al generar la receta con la IA.');
         setErrorType('ai');
       } else if (error.status === 429) {
         setError('Límite de uso de IA alcanzado. Por favor, espera un momento e intenta de nuevo.');
@@ -187,7 +160,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
         setError('Error temporal de conexión. Por favor, intenta de nuevo.');
         setErrorType('technical');
       } else {
-        setError(error.message || 'Error al generar recetas. Verifica tu conexión y configuración.');
+        setError(error.message || 'Error al generar recetas. Verifica tu conexión.');
         setErrorType('technical');
       }
     } finally {
@@ -213,7 +186,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
 
   return (
     <div className="min-h-screen bg-food-pattern p-6 relative overflow-hidden">
-      {/* Decoraciones de comida en el fondo */}
       <div className="absolute top-10 left-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
       <div className="absolute bottom-32 left-16 text-4xl opacity-10 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
       <div className="absolute bottom-10 right-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '1.5s' }}>🍳</div>
@@ -232,7 +204,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             <h2 className="text-3xl font-bold text-gray-800 font-cooking">Generar Recetas con IA</h2>
           </div>
           
-          {/* Buscador */}
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-food-400" size={20} />
@@ -246,17 +217,12 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             </div>
           </div>
           
-          {/* Ingredientes Prioritarios */}
           {filteredPriority.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-xl">⚠️</span>
-                <h3 className="text-lg font-bold text-gray-800">
-                  Ingredientes Prioritarios
-                </h3>
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-                  Próximos a caducar
-                </span>
+                <h3 className="text-lg font-bold text-gray-800">Ingredientes Prioritarios</h3>
+                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">Próximos a caducar</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {filteredPriority.map(ing => (
@@ -272,9 +238,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold text-gray-800 text-sm">{ing.name}</p>
-                        <p className="text-xs text-red-600 font-medium">
-                          {formatQuantity(ing.quantity, 2)} {ing.unit}
-                        </p>
+                        <p className="text-xs text-red-600 font-medium">{formatQuantity(ing.quantity, 2)} {ing.unit}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                         selectedIngredients.includes(ing.id)
@@ -294,7 +258,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             </div>
           )}
           
-          {/* Ingredientes Generales */}
           {filteredNormal.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -314,9 +277,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold text-gray-800 text-sm">{ing.name}</p>
-                        <p className="text-xs text-gray-500 font-medium">
-                          {formatQuantity(ing.quantity, 2)} {ing.unit}
-                        </p>
+                        <p className="text-xs text-gray-500 font-medium">{formatQuantity(ing.quantity, 2)} {ing.unit}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                         selectedIngredients.includes(ing.id)
@@ -336,7 +297,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             </div>
           )}
 
-          {/* Platillos Almacenados */}
           {pendingDishes.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -345,7 +305,6 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {pendingDishes.map(dish => {
                   const isExpiringSoon = dish.daysRemaining <= 2;
-                  
                   return (
                     <div 
                       key={dish.id}
@@ -359,9 +318,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-semibold text-gray-800 text-sm">{dish.name}</p>
-                          <p className={`text-xs font-medium ${
-                            isExpiringSoon ? 'text-red-600' : 'text-orange-600'
-                          }`}>
+                          <p className={`text-xs font-medium ${isExpiringSoon ? 'text-red-600' : 'text-orange-600'}`}>
                             Caduca en {dish.daysRemaining} días
                           </p>
                         </div>
@@ -384,26 +341,16 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
             </div>
           )}
 
-          {/* Mensaje si no hay ingredientes disponibles */}
           {ingredients.length === 0 && pendingDishes.length === 0 && (
             <div className="text-center py-12 bg-white/60 rounded-2xl mb-6 border-2 border-dashed border-food-200">
               <div className="text-6xl mb-4">🥬</div>
-              <p className="text-gray-600 mb-2 text-lg font-medium">
-                No tienes ingredientes disponibles
-              </p>
-              <p className="text-sm text-gray-500 mb-6">
-                Los ingredientes y platillos caducados no se muestran aquí.
-              </p>
-              <button
-                onClick={() => setCurrentView('register-ingredient')}
-                className="btn-food"
-              >
+              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes ingredientes disponibles</p>
+              <button onClick={() => setCurrentView('register-ingredient')} className="btn-food">
                 🥗 Registrar ingredientes
               </button>
             </div>
           )}
           
-          {/* Opciones de Receta */}
           <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/60 rounded-xl p-4 border-2 border-food-100 md:col-span-2 lg:col-span-3">
               <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -411,15 +358,9 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {categories.map(cat => (
-                  <label 
-                    key={cat} 
-                    onClick={() => toggleCategory(cat)} 
-                    className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-food-50 transition border border-transparent hover:border-food-200"
-                  >
+                  <label key={cat} onClick={() => toggleCategory(cat)} className="flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg hover:bg-food-50 transition border border-transparent hover:border-food-200">
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                      selectedCategories.includes(cat)
-                        ? 'border-food-500 bg-food-500'
-                        : 'border-food-300'
+                      selectedCategories.includes(cat) ? 'border-food-500 bg-food-500' : 'border-food-300'
                     }`}>
                       {selectedCategories.includes(cat) && (
                         <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -437,11 +378,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                 <span className="text-lg">🕐</span> Horario
               </label>
-              <select 
-                value={mealTime}
-                onChange={(e) => setMealTime(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all"
-              >
+              <select value={mealTime} onChange={(e) => setMealTime(e.target.value)} className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all">
                 <option>Desayuno</option>
                 <option>Comida</option>
                 <option>Cena</option>
@@ -452,41 +389,22 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                 <span className="text-lg">👥</span> Personas
               </label>
-              <input 
-                type="number"
-                min="1"
-                max="20"
-                value={servings}
-                onChange={(e) => setServings(parseInt(e.target.value) || 2)}
-                className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all"
-              />
+              <input type="number" min="1" max="20" value={servings} onChange={(e) => setServings(parseInt(e.target.value) || 2)} className="w-full px-4 py-3 border-2 border-food-200 rounded-xl focus:ring-2 focus:ring-food-500 focus:border-transparent bg-white transition-all" />
             </div>
           </div>
 
-          {/* Mostrar error al usuario */}
           {error && (
             <div className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-4 rounded-xl text-sm mb-6 flex items-start gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
                 <p className="font-bold mb-1">Error</p>
                 <p className="text-red-600">{error}</p>
-
-                {errorType === 'ai' && (
-                  <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">
-                    💡 Intenta ajustar las categorías seleccionadas o usar ingredientes diferentes.
-                  </p>
-                )}
-                {errorType === 'technical' && (
-                  <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">
-                    💡 Error técnico. Verifica tu conexión a internet o inténtalo más tarde.
-                  </p>
-                )}
+                {errorType === 'ai' && <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">💡 Intenta ajustar las categorías seleccionadas o usar ingredientes diferentes.</p>}
+                {errorType === 'technical' && <p className="mt-3 text-xs bg-white/60 p-2 rounded-lg text-red-500">💡 Error técnico. Verifica tu conexión o inténtalo más tarde.</p>}
               </div>
             </div>
           )}
 
-
-          {/* Botones de generación */}
           <div className="space-y-3">
             <button 
               onClick={() => handleGenerate(false)}

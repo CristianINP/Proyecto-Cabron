@@ -15,13 +15,13 @@ const RecipeResults = ({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [usedRecipeNames, setUsedRecipeNames] = useState([]);
-  const [isGeneratingLock, setIsGeneratingLock] = useState(false);
 
   // Guardar los parámetros de la última generación
   const [lastParams] = useState(() => {
     const saved = sessionStorage.getItem('lastRecipeParams');
     return saved ? JSON.parse(saved) : null;
   });
+
   // Formatear warning de porciones de forma segura
   const currentRecipe = recipes && recipes.length > 0 ? recipes[currentIndex] : null;
   const portionWarning = currentRecipe?.portionWarning ? cleanText(currentRecipe.portionWarning) : null;
@@ -45,46 +45,40 @@ const RecipeResults = ({
   };
 
   const handleGenerateAnother = useCallback(async () => {
-    // Lock para evitar doble clic
-    if (isGeneratingLock || !lastParams) {
+    if (!lastParams || generating) {
       if (!lastParams) {
         setCurrentView('generate-recipe');
       }
       return;
     }
 
-    setIsGeneratingLock(true);
     setGenerating(true);
     setError('');
 
     try {
-      // Generar otra receta con los mismos parámetros
       const newRecipes = await generateRecipe({
         ...lastParams,
         regenerate: true,
         usedRecipeNames
       });
 
-      // Actualizar usando el callback para evitar race conditions
-      setGeneratedRecipes(prev => {
-        const updated = [...prev, ...newRecipes];
+      if (!newRecipes || newRecipes.length === 0) {
+        throw new Error('No se generó ninguna receta.');
+      }
+
+      setGeneratedRecipes(prevRecipes => {
+        const updated = [...prevRecipes, ...newRecipes];
         return updated;
       });
 
-      // Actualizar nombres usados
-      setUsedRecipeNames(prev => {
-        const newNames = newRecipes.map(r => cleanText(r?.name)).filter(Boolean);
-        return [...prev, ...newNames];
-      });
+      const newNames = newRecipes.map(r => cleanText(r?.name)).filter(Boolean);
+      setUsedRecipeNames(prev => [...prev, ...newNames]);
 
-      // Ir a la nueva receta (la última agregada)
-      setGeneratedRecipes(prev => {
-        const newIndex = prev.length - 1;
-        // Usar setTimeout para asegurar que el estado se haya actualizado
-        setTimeout(() => {
-          setCurrentIndex(newIndex);
-        }, 0);
-        return prev;
+      const currentTotal = recipes ? recipes.length : 0;
+      const newTargetIndex = currentTotal + newRecipes.length - 1;
+      
+      requestAnimationFrame(() => {
+        setCurrentIndex(newTargetIndex);
       });
 
     } catch (error) {
@@ -99,22 +93,11 @@ const RecipeResults = ({
       } else {
         setError(error.message || 'Error al generar otra receta. Intenta nuevamente.');
       }
-      
-      // Desbloquear incluso si hay error
-      setIsGeneratingLock(false);
     } finally {
       setGenerating(false);
     }
-  }, [lastParams, usedRecipeNames, isGeneratingLock, setGeneratedRecipes, setCurrentIndex, setCurrentView]);
+  }, [lastParams, usedRecipeNames, generating, recipes, setGeneratedRecipes, setCurrentIndex, setCurrentView]);
 
-  // Desbloquear cuando el componente se desmonte o cambie de estado
-  useEffect(() => {
-    return () => {
-      setIsGeneratingLock(false);
-    };
-  }, []);
-
-  // Actualizar usedRecipeNames cuando cambia el índice o las recetas
   useEffect(() => {
     if (recipes && recipes.length > 0) {
       const names = recipes.map(r => cleanText(r?.name)).filter(Boolean);
@@ -145,7 +128,6 @@ const RecipeResults = ({
 
   return (
     <div className="min-h-screen bg-food-pattern p-4 flex flex-col relative overflow-hidden">
-      {/* Decoraciones de comida */}
       <div className="absolute top-10 left-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
       <div className="absolute bottom-32 left-16 text-4xl opacity-10 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
       <div className="absolute bottom-10 right-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '1.5s' }}>🍳</div>
@@ -171,7 +153,7 @@ const RecipeResults = ({
 
             <button
               onClick={handleGenerateAnother}
-              disabled={generating || isGeneratingLock || !lastParams}
+              disabled={generating || !lastParams}
               className="group flex items-center gap-2 bg-food-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:bg-food-600 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw
@@ -193,7 +175,6 @@ const RecipeResults = ({
           </div>
         )}
         
-        {/* Receta centrada y más grande */}
         <div className="flex-1 flex items-center justify-center">
           <div className="card-food rounded-2xl p-8 w-full max-w-3xl transform hover:scale-[1.02] transition-all duration-300">
             <div className="mb-6 text-center">
@@ -227,14 +208,15 @@ const RecipeResults = ({
               <div className="flex items-center justify-center gap-2 text-gray-600">
                 <div className="text-center bg-white rounded-xl px-6 py-3 shadow-md border-2 border-food-100">
                   <p className="text-3xl font-bold text-food-600">
-                    {currentRecipe?.servings || 2}
+                    {currentRecipe.servings || 2}
                   </p>
-                  <p className="text-xs text-gray-600 font-medium">personas</p>
+                  <p className="text-xs text-gray-600 font-medium">
+                    {currentRecipe.servings === 1 ? 'persona' : 'personas'}
+                  </p>
                 </div>
               </div>
             </div>
             
-            {/* Advertencia de porciones - SOLO si es un warning válido */}
             {portionWarning && (
               <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-3">
@@ -247,7 +229,6 @@ const RecipeResults = ({
               </div>
             )}
             
-            {/* Ingredientes faltantes */}
             {missingIngredients.length > 0 && (
               <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-4">
                 <div className="flex items-start gap-3">
@@ -284,7 +265,6 @@ const RecipeResults = ({
                 Ver Receta Completa
               </button>
               
-              {/* Botones de navegación si hay más de 1 receta */}
               {recipes.length > 1 && (
                 <>
                   <button 
@@ -305,7 +285,6 @@ const RecipeResults = ({
           </div>
         </div>
         
-        {/* Indicador de recetas */}
         <div className="text-center mt-6 mb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             {recipes.map((_, idx) => (

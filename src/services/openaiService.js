@@ -1,25 +1,129 @@
 // src/services/openaiService.js
 import axios from 'axios';
-import {
-  normalizeOpenAIResponse,
-  retryOperation
-} from '../utils/recipeHelpers';
+import { normalizeOpenAIResponse, retryOperation } from '../utils/recipeHelpers';
 
 const API_URL = 'http://localhost:3001/openai';
 
 /**
- * Verifica si un error es de un tipo que merece reintento
- * @param {Error} error - Error a verificar
- * @returns {boolean} - True si debe reintentar
+ * Verifica si un error es temporal (retryable)
  */
 const isTemporaryError = (error) => {
   const status = error.response?.status || error.status;
-  // Reintentar en errores de servidor, rate limiting o timeout
   if (!status) return true; // Error de red
-  if (status >= 500) return true; // Errores del servidor
+  if (status >= 500) return true; // Server error
   if (status === 429) return true; // Rate limit
-  if (status >= 400 && status < 500 && status !== 422) return false; // Errores cliente (422 validación puede que sí)
   return false;
+};
+
+/**
+ * Sanitiza una cadena para convertirla en JSON válido.
+ * Corrige comillas tipográficas, comillas simples y caracteres inválidos.
+ */
+const sanitizeJsonString = (dirtyJson) => {
+  if (typeof dirtyJson !== 'string') return dirtyJson;
+
+  let cleaned = dirtyJson.trim();
+
+  // Reemplazar comillas tipográficas por comillas rectas dobles
+  cleaned = cleaned.replace(/[“”]/g, '"');
+  
+  // Reemplazar apóstrofos tipográficos por comillas simples rectas
+  cleaned = cleaned.replace(/[‘’]/g, "'");
+
+  // Eliminar comillas simples alrededor de claves o valores (JSON no las permite)
+  cleaned = cleaned.replace(/\s*'([^']+)'\s*:/g, ' "$1": ');
+  cleaned = cleaned.replace(/:\s*'([^']+)'/g, ': "$1"');
+
+  // Eliminar caracteres de control inválidos
+  cleaned = cleaned.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+
+  return cleaned;
+};
+
+/**
+ * Extrae y parsea JSON de una respuesta de OpenAI de forma segura
+ */
+const safeParseJsonFromResponse = (rawContent) => {
+  if (!rawContent || typeof rawContent !== 'string') {
+    throw new Error('Respuesta vacía o inválida de OpenAI');
+  }
+
+  const sanitized = sanitizeJsonString(rawContent);
+
+  // Buscar bloque JSON desde el primer { hasta el último } balanceado
+  const jsonMatch = sanitized.match(/\{[\s\S]*\}/);
+  
+  if (!jsonMatch) {
+    console.error('No se encontró bloque JSON en:', sanitized);
+    throw new Error('No se encontró un JSON válido en la respuesta.');
+  }
+
+  const jsonString = jsonMatch[0];
+
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    console.error('JSON.parse falló para:', jsonString);
+    console.error('Error:', e.message);
+    throw new Error('JSON inválido en la respuesta.');
+  }
+};
+
+// Esquema JSON para forzar formato válido (opcional, mejora calidad)
+const jsonSchema = {
+  name: "recipe_response",
+  description: "Esquema estricto para la respuesta de generación de recetas",
+  schema: {
+    type: "object",
+    properties: {
+      recipe: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            categories: { type: "array", items: { type: "string" } },
+            ingredients: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  quantity: { type: ["string", "number"] },
+                  unit: { type: "string" }
+                },
+                required: ["name", "quantity", "unit"]
+              }
+            },
+            missingIngredients: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  quantity: { type: ["string", "number"] },
+                  unit: { type: "string" }
+                },
+                required: ["name", "quantity", "unit"]
+              }
+            },
+            instructions: {
+              type: "array",
+              items: { type: "string" }
+            },
+            prepTime: { type: "number" },
+            servings: { type: "number" },
+            portionWarning: { type: ["string", "null"] }
+          },
+          required: ["name", "categories", "ingredients", "missingIngredients", "instructions", "prepTime", "servings", "portionWarning"]
+        },
+        minItems: 1,
+        maxItems: 1
+      }
+    },
+    required: ["recipe"],
+    additionalProperties: false
+  }
 };
 
 export const generateRecipe = async ({
@@ -32,151 +136,68 @@ export const generateRecipe = async ({
   usedRecipeNames = []
 }) => {
   try {
-    // Crear lista de ingredientes
     const ingredientsList = ingredients.map(ing => 
       `${ing.name} (${ing.quantity} ${ing.unit})`
     ).join(', ');
 
-    // Crear texto de categorías
     const categoriesText = categories.length > 0 
       ? `Categorías: ${categories.join(', ')}` 
       : '';
     
-    // Texto adicional si es regeneración
     const regenerateText = regenerate 
-      ? '\n\n⚠️ IMPORTANTE: Genera una receta COMPLETAMENTE DIFERENTE a la anterior. No repitas la misma receta, usa diferentes técnicas de cocción, sabores y/o combinaciones.'
+      ? '\n\n⚠️ IMPORTANTE: Genera una receta COMPLETAMENTE DIFERENTE a la anterior. Usa diferentes técnicas, sabores y combinaciones.'
       : '';
     const usedNamesText = usedRecipeNames.length > 0
-      ? `\n\nRECETAS YA GENERADAS (NO REPITAS NOMBRES NI PLATILLOS SIMILARES): ${usedRecipeNames.join(', ')}`
+      ? `\n\nRECETAS YA GENERADAS (NO REPITAS NOMBRES): ${usedRecipeNames.join(', ')}`
       : '';
 
-    
-    // Crear el prompt para GPT
-    const prompt = `Eres un chef experto. Genera 1 receta usando estos ingredientes DISPONIBLES EN EL INVENTARIO: ${ingredientsList}.
-
+    const prompt = `Eres un chef experto. Genera 1 receta usando estos ingredientes: ${ingredientsList}.
     ${categoriesText}
     Horario: ${mealTime}
-    Porciones: ${servings} personas
-    ${priorityOnly ? 'IMPORTANTE: Prioriza el uso de TODOS los ingredientes disponibles.' : ''}
+    Porciones: ${servings}
+    ${priorityOnly ? 'Prioriza usar TODOS los ingredientes.' : ''}
     ${regenerateText}
     ${usedNamesText}
 
-    REGLAS CRÍTICAS:
-    1. Si las categorías seleccionadas son incompatibles con los ingredientes disponibles (por ejemplo, "Vegetariana" pero hay carne, o "Vegana" pero hay lácteos/huevos), debes responder con un mensaje de error en lugar de generar una receta.
-    2. Si no es posible crear una receta que cumpla con TODAS las categorías seleccionadas simultáneamente, responde con un mensaje de error explicando la incompatibilidad.
-    3. Solo genera la receta si todos los ingredientes disponibles son compatibles con todas las categorías seleccionadas.
+    REGLAS:
+    1. Si categorías son incompatibles con ingredientes, responde {"error": "..."}
+    2. Solo responde con JSON. Nada más. Sin explicaciones.
+    3. Formato de cantidades no numéricas: "Al gusto", "Una pizca" (con mayúscula).
+    
+    JSON de salida:`;
 
-    SEPARACIÓN DE INGREDIENTES (MUY IMPORTANTE):
-    - En "ingredients": SOLO incluye los ingredientes que están en la lista de DISPONIBLES arriba.
-    - En "missingIngredients": incluye CUALQUIER ingrediente que necesites pero NO esté en la lista de disponibles (sal, aceite, harina, azúcar, especias, condimentos, miel, etc.) y que cada ingrediente empiece con MAYÚSCULA.
-    - Si un ingrediente NO está en la lista de disponibles, DEBE ir en "missingIngredients", sin excepción.
-
-    FORMATO DE CANTIDADES (MUY IMPORTANTE):
-    - Si la cantidad de un ingrediente NO es un número (por ejemplo: "al gusto", "una pizca", "suficiente"), la primera letra DEBE ir en MAYÚSCULA.
-    - Ejemplos correctos: "Al gusto", "Una pizca", "Suficiente".
-    - NUNCA escribas cantidades no numéricas en minúsculas.
-
-    Para recetas válidas proporciona:
-    1. Nombre atractivo de la receta
-    2. Lista de ingredientes (SOLO los disponibles) con cantidades exactas ajustadas a ${servings} personas
-    3. Lista de ingredientes faltantes (TODO lo que necesites pero no esté disponible)
-    4. Pasos de preparación numerados y detallados
-    5. Tiempo estimado de preparación en minutos
-    6. Si la receta no puede ajustarse exactamente a ${servings} personas por la naturaleza de los ingredientes, indícalo en "portionWarning"
-
-    Formato de respuesta en JSON:
-
-    Para ERROR (categorías incompatibles):
-    {
-      "error": "No es posible generar una receta [categoría] con los ingredientes seleccionados. [Explicación específica del conflicto]"
-    }
-
-    Para receta VÁLIDA:
-    {
-      "recipe": [
-        {
-          "name": "Nombre de la receta",
-          "categories": ["categoria1", "categoria2"],
-          "ingredients": [
-            {"name": "ingrediente", "quantity": "cantidad", "unit": "unidad"}
-          ],
-          "missingIngredients": [
-            {"name": "ingrediente", "quantity": "cantidad", "unit": "unidad"}
-          ],
-          "instructions": ["paso 1", "paso 2", ...],
-          "prepTime": 30,
-          "servings": ${servings},
-          "portionWarning": "Texto de advertencia si aplica o null"
-        }
-      ]
-    }
-      
-    ⚠️ RESPUESTA FINAL OBLIGATORIA:
-    - Devuelve SOLO el JSON.
-    - No escribas texto antes ni después.
-    - No uses bloques de codigo.
-    - No incluyas texto explicativo.`;
-
-    // Hacer petición con reintentos automáticos
     const makeRequest = async () => {
       const response = await axios.post(API_URL, {
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: `
-              Responde EXCLUSIVAMENTE con JSON valido.
-              No escribas texto fuera del JSON.
-              No incluyas comentarios ni explicaciones.`
+            content: `Eres un generador de JSON estricto. Siempre responde con JSON válido. No uses texto fuera del JSON.`
           },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'user', content: prompt }
         ],
-        temperature: regenerate ? 0.75 : 0.6,
-        top_p: 0.95,
-        presence_penalty: regenerate ? 0.8 : 0.2,
-        frequency_penalty: regenerate ? 0.6 : 0.2,
-        max_tokens: 700
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
+        // Forzar formato JSON válido (soportado por GPT-4o-mini)
+        response_format: { 
+          type: "json_schema",
+          json_schema: jsonSchema
         },
+        temperature: regenerate ? 0.7 : 0.5,
+        max_tokens: 800
+      }, {
+        headers: { 'Content-Type': 'application/json' },
         timeout: 30000
       });
 
-      // Verificar errores HTTP de OpenAI
       if (response.status >= 400) {
-        const error = new Error(response.data?.error?.message || `Error HTTP ${response.status}`);
-        error.status = response.status;
-        error.response = response;
-        throw error;
+        const err = new Error(response.data?.error?.message || `Error HTTP ${response.status}`);
+        err.status = response.status;
+        err.response = response;
+        throw err;
       }
 
-      const content = response.data.choices?.[0]?.message?.content?.trim();
-
-      if (!content) {
-        throw new Error('Respuesta vacía de OpenAI');
-      }
-
-      // Extraer solo el primer JSON valido
-      const jsonMatch = content.match(/\{[\s\S]*\}$/);
-
-      if (!jsonMatch) {
-        console.error('Respuesta cruda de OpenAI:', content);
-        throw new Error('No se encontró un JSON válido en la respuesta.');
-      }
-
-      let result;
-      try {
-        result = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        console.error('JSON malformado:', jsonMatch[0]);
-        throw new Error('JSON inválido en la respuesta.');
-      }
-
-      return result;
+      // Parsear con sanitización robusta
+      const content = response.data?.choices?.[0]?.message?.content;
+      return safeParseJsonFromResponse(content);
     };
 
     const result = await retryOperation(makeRequest, {
@@ -185,93 +206,63 @@ export const generateRecipe = async ({
       shouldRetry: isTemporaryError
     });
 
-    // Verificar si hay un error de compatibilidad en la respuesta
     if (result.error) {
-      const error = new Error(result.error);
-      error.isAIError = true;
-      error.isCompatibilityError = result.error.includes('No es posible generar una receta');
-      throw error;
+      const err = new Error(result.error);
+      err.isAIError = true;
+      err.isCompatibilityError = result.error.includes('No es posible');
+      throw err;
     }
 
-    // Normalizar la respuesta
     const normalized = normalizeOpenAIResponse(result);
-
     if (!normalized.isValid) {
-      const error = new Error(normalized.error || 'Error al procesar la respuesta de la IA');
-      error.isAIError = true;
-      throw error;
+      const err = new Error(normalized.error || 'Error al procesar la respuesta de la IA');
+      err.isAIError = true;
+      throw err;
     }
 
-    // Garantizar que portionWarning sea null o string limpio
-    if (normalized.recipe) {
-      normalized.recipe.portionWarning = normalized.portionWarning;
-    }
-    
+    normalized.recipe.portionWarning = normalized.portionWarning;
     return [normalized.recipe];
   } catch (error) {
-    console.error('Error al generar receta:', error);
-    // Re-lanzar para que lo maneje el frontend
+    console.error('Error crítico en generateRecipe:', error);
     throw error;
   }
 };
 
 export const calculateDishShelfLife = async (ingredients) => {
   try {
+    const ingredientsList = ingredients.map(ing => ing.name).join(', ');
+    const prompt = `Como experto en seguridad alimentaria, calcula los días de refrigeración para: ${ingredientsList}. Responde SOLO con un número entero.`;
+
     const makeRequest = async () => {
-      // Crear lista de ingredientes solo con nombres
-      const ingredientsList = ingredients.map(ing => ing.name).join(', ');
-
-      const prompt = `Como experto en seguridad alimentaria, calcula cuántos días se puede almacenar de forma segura en refrigeración un platillo preparado con estos ingredientes: ${ingredientsList}.
-
-      Considera el ingrediente más perecedero una vez COCIDO/PREPARADO y las normas de seguridad alimentaria estándar para alimentos cocinados refrigerados.
-
-      Responde ÚNICAMENTE con un número entero (días), sin texto adicional.`;
-
       const response = await axios.post(API_URL, {
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: 'Eres un experto en seguridad alimentaria. Respondes SOLO con números enteros.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'system', content: 'Responde SIEMPRE con un número entero. Nada más.' },
+          { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         max_tokens: 10
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      });
+      }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
 
       if (response.status >= 400) {
-        const error = new Error(response.data?.error?.message || `Error HTTP ${response.status}`);
-        error.status = response.status;
-        throw error;
+        const err = new Error(response.data?.error?.message || `Error ${response.status}`);
+        err.status = response.status;
+        throw err;
       }
 
-      const days = parseInt(response.data.choices?.[0]?.message?.content?.trim());
-      
-      if (isNaN(days) || days < 1 || days > 14) {
-        throw new Error('Día inválido');
-      }
-
+      const text = response.data.choices[0].message.content.trim();
+      const days = parseInt(text);
+      if (isNaN(days) || days < 1 || days > 14) throw new Error('Día inválido');
       return days;
     };
 
-    const days = await retryOperation(makeRequest, {
+    return await retryOperation(makeRequest, {
       maxRetries: 2,
       initialDelay: 500,
       shouldRetry: isTemporaryError
     });
-    
-    return days;
   } catch (error) {
-    console.error('Error al calcular vida útil del platillo:', error);
-    return 3; // Default en caso de error
+    console.error('Error calc vida útil:', error);
+    return 3;
   }
 };

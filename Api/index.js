@@ -28,16 +28,22 @@ app.post('/openai', async (req, res) => {
 
     const data = await response.json();
 
-    // Preservar el status HTTP real de OpenAI
-    // Esto permite al frontend distinguir entre errores técnicos y respuestas normales
+    // 🔒 CRÍTICO: Preservar el status HTTP real de OpenAI.
+    // Si OpenAI dice 429 (Rate Limit) o 500 (Error), el frontend lo recibirá como no-200.
+    // Esto permite al frontend distinguir entre:
+    // - 200: Respuesta válida (procesar receta)
+    // - 429: Límite alcanzado (esperar y reintentar)
+    // - 5xx: Error temporal (mostrar mensaje técnico)
+    // - 400: Error de formato (el prompt o JSON están mal)
     return res.status(response.status).json(data);
   } catch (error) {
-    // Error del proxy (red, timeout, etc.)
-    console.error('Proxy OpenAI error:', error);
-    return res.status(500).json({
-      error: 'Error de conexión con el proxy OpenAI',
-      message: error.message,
-      type: 'proxy_error'
+    // Error del proxy (red caida, timeout, DNS, etc.)
+    // Frontend: No intentes reintentar muchas veces, es un error de red real.
+    console.error('[Proxy Error] Falla de red o timeout:', error.message);
+    return res.status(503).json({
+      error: 'Error de conexión',
+      message: 'No se pudo conectar con el servicio de IA. Revisa tu conexión.',
+      type: 'network_error'
     });
   }
 });
