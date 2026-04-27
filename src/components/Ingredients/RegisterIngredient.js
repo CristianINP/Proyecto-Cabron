@@ -90,7 +90,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
         if (calculatedDate) {
           finalExpirationDate = toISODateString(calculatedDate);
         } else {
-          setError('No se pudo calcular la fecha de caducidad. Por favor ingrésala manualmente.');
+          setError('No se pudo calcular la Fecha de Caducidad. Por favor Ingrésela Manualmente.');
           setManualExpiration(true);
           setLoading(false);
           return;
@@ -129,9 +129,9 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
 
       await addDoc(collection(db, `users/${userId}/ingredients`), ingredientData);
 
-      let successMessage = '¡Ingrediente registrado exitosamente!';
+      let successMessage = '¡Ingrediente Registrado Exitosamente!';
       if (foodAddedToPersonalDB) {
-        successMessage += ' (Alimento agregado a tu base de datos personal)';
+        successMessage += ' (Alimento Agregado a tu Base de Datos Personal)';
       }
       setSuccess(successMessage);
 
@@ -151,8 +151,8 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
       }, 3000);
 
     } catch (error) {
-      console.error('Error al registrar ingrediente:', error);
-      setError('Error al registrar el ingrediente. Intenta nuevamente.');
+      console.error('Error al Registrar Ingrediente:', error);
+      setError('Error al Registrar el Ingrediente. Intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -171,7 +171,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
           onClick={() => setCurrentView('menu')}
           className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
         >
-          ← Volver al menú
+          ← Volver al Menú
         </button>
 
         <div className="card-food rounded-2xl p-8">
@@ -184,7 +184,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
             {/* Nombre del ingrediente con autocompletado */}
             <div className="relative">
               <label className="block text-sm font-bold text-cream-800 mb-2">
-                🍽️ Nombre del ingrediente *
+                🍽️ Nombre del Ingrediente *
               </label>
               <input
                 type="text"
@@ -196,7 +196,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
                   }
                 }}
                 className="input-food"
-                placeholder="Ej: manzana, leche, queso..."
+                placeholder="Ej: Manzana, Leche, Queso..."
                 disabled={loading}
               />
 
@@ -264,7 +264,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
             {/* Fecha de compra */}
             <div>
               <label className="block text-sm font-bold text-cream-800 mb-2">
-                🛒 Fecha de compra *
+                🛒 Fecha de Compra *
               </label>
               <input
                 type="date"
@@ -280,14 +280,14 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-bold text-cream-800">
-                  📅 Fecha de caducidad (opcional)
+                  📅 Fecha de Caducidad (opcional)
                 </label>
                 <button
                   type="button"
                   onClick={() => setManualExpiration(!manualExpiration)}
                   className="text-xs text-food-600 hover:text-food-700 font-semibold transition hover:scale-105"
                 >
-                  {manualExpiration ? '⚡ Calcular automáticamente' : '✏️ Ingresar manualmente'}
+                  {manualExpiration ? '⚡ Calcular Automáticamente' : '✏️ Ingresar Manualmente'}
                 </button>
               </div>
 
@@ -304,8 +304,8 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
 
               <p className="text-xs text-cream-600 mt-2 flex items-center gap-1">
                 💡 {manualExpiration
-                  ? 'Ingresa la fecha de caducidad manualmente'
-                  : 'Si no la ingresas, el sistema la calculará automáticamente'
+                  ? 'Ingrese la Fecha de Caducidad Manualmente'
+                  : 'Si no la ingresa, El sistema la calculará automáticamente'
                 }
               </p>
             </div>

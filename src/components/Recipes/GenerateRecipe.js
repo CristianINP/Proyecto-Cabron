@@ -195,7 +195,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
           onClick={() => setCurrentView('menu')} 
           className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
         >
-          ← Volver al menú
+          ← Volver al Menú
         </button>
         
         <div className="card-food rounded-2xl p-8">

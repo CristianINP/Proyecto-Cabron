@@ -85,14 +85,14 @@ const Login = ({ setCurrentView }) => {
       <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce">🥗</div>
-          <h1 className="text-3xl font-bold text-food-800 font-cooking">Ready To Cook</h1>
-          <p className="text-food-600 mt-2">Gestiona tus alimentos, evita el desperdicio 🥬</p>
+          <h1 className="text-3xl font-bold text-food-800 font-cooking">Ready to Cook</h1>
+          <p className="text-food-600 mt-2">Gestiona tus alimentos, Evita el desperdicio 🥬</p>
         </div>
         
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo electrónico
+              📧 Correo Electrónico
             </label>
             <input 
               type="email" 
@@ -133,7 +133,7 @@ const Login = ({ setCurrentView }) => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                Iniciando sesión...
+                Iniciando Sesión...
               </>
             ) : (
               <>
@@ -148,12 +148,12 @@ const Login = ({ setCurrentView }) => {
               onClick={() => setCurrentView('recovery')}
               className="text-food-600 hover:text-food-700 font-semibold transition hover:scale-105 inline-block"
             >
-              ¿Olvidaste tu contraseña? 🥺
+              ¿Olvidaste tu Contraseña? 🥺
             </button>
           </div>
           
           <div className="text-center text-sm text-cream-700">
-            ¿No tienes cuenta? - {' '}
+            ¿No tienes Cuenta? - {' '}
             <button 
               type="button"
               onClick={() => setCurrentView('register')}

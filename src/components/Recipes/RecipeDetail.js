@@ -35,7 +35,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         
         <div className="text-center relative z-10 card-food p-8 rounded-2xl">
           <div className="text-6xl mb-4">🍽️</div>
-          <p className="text-gray-600 mb-4 text-lg font-medium">No hay receta seleccionada</p>
+          <p className="text-gray-600 mb-4 text-lg font-medium">No hay Receta Seleccionada</p>
           <button
             onClick={() => setCurrentView('recipe-results')}
             className="btn-food"
@@ -74,7 +74,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
     if (parsed.type !== 'number' || isNaN(parsed.number) || parsed.number < 0.25) {
       showModal(
         'error',
-        'Cantidad inválida',
+        'Cantidad Inválida',
         'La cantidad mínima permitida es 0.25. Se ajustará automáticamente.',
         () => {
           setUsedIngredients(usedIngredients.map((ing, i) =>
@@ -94,8 +94,8 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const handleMarkAsCompleted = () => {
     showModal(
       'confirm',
-      'Marcar como terminada',
-      '¿Estás seguro de marcar esta receta como terminada? Se actualizará tu inventario.',
+      'Marcar como Terminada',
+      '¿Está seguro de marcar esta receta como terminada? Se actualizará su inventario.',
       async () => {
         setSaving(true);
         try {
@@ -107,12 +107,13 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
-              const quantityUsed = parseSafeQuantity(ing.usedQuantity).type === 'number' ? parseFloat(ing.usedQuantity) : 0;
+              const parsedQty = parseSafeQuantity(ing.usedQuantity);
+              const quantityUsed = parsedQty.type === 'number' ? parsedQty.number : 0;
               const newQuantity = currentData.quantity - quantityUsed;
-              
+
               if (newQuantity <= 0) {
                 await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
-                usedIngredientsReport.push(`${ing.name}: Usadas 🥳 (se acabó)`);
+                usedIngredientsReport.push(`${ing.name}: Usadas por completo 🥳 (Se acabó)`);
               } else {
                 const isFractioned = newQuantity < 1;
                 const updateData = { quantity: newQuantity, isFractioned };
@@ -140,15 +141,15 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           });
 
           const reportMessage = usedIngredientsReport.length > 0 ? (
-            <div><p className="font-semibold mb-2">Inventario actualizado:</p><ul className="text-left space-y-1">
+            <div><p className="font-semibold mb-2">Inventario Actualizado:</p><ul className="text-left space-y-1">
               {usedIngredientsReport.map((report, idx) => <li key={idx} className="text-sm">• {report}</li>)}
             </ul></div>
-          ) : 'Receta completada exitosamente';
+          ) : 'Receta Completada Exitosamente';
 
-          showModal('success', '¡Receta completada! 🎉', reportMessage, () => setCurrentView('menu'));
+          showModal('success', '¡Receta Completada! 🎉', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
-          console.error('Error al completar receta:', error);
-          showModal('error', 'Error', `Error al guardar: ${error.message}`);
+          console.error('Error al Completar Receta:', error);
+          showModal('error', 'Error', `Error al Guardar: ${error.message}`);
         } finally { setSaving(false); }
       }
     );
@@ -157,8 +158,8 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const handleSaveAsPending = () => {
     showModal(
       'confirm',
-      'Guardar como pendiente',
-      '¿Deseas guardar este platillo como pendiente? Se actualizará tu inventario y podrás terminarlo después.',
+      'Guardar como Pendiente',
+      '¿Desea guardar este platillo como pendiente? Se actualizará su Inventario y podrá terminarlo después.',
       async () => {
         setSaving(true);
         try {
@@ -169,11 +170,12 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
-              const quantityUsed = parseSafeQuantity(ing.usedQuantity).type === 'number' ? parseFloat(ing.usedQuantity) : 0;
+              const parsedQty = parseSafeQuantity(ing.usedQuantity);
+              const quantityUsed = parsedQty.type === 'number' ? parsedQty.number : 0;
               const newQuantity = currentData.quantity - quantityUsed;
               if (newQuantity <= 0) {
                 await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
-                usedIngredientsReport.push(`${ing.name}: Usadas 🥳 (se acabó)`);
+                usedIngredientsReport.push(`${ing.name}: Usadas por completo 🥳 (Se acabó)`);
               } else {
                 const isFractioned = newQuantity < 1;
                 const updateData = { quantity: newQuantity, isFractioned };
@@ -208,15 +210,15 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           });
 
           const reportMessage = usedIngredientsReport.length > 0 ? (
-            <div><p className="font-semibold mb-2">Inventario actualizado:</p><ul className="text-left space-y-1 mb-3">
+            <div><p className="font-semibold mb-2">Inventario Actualizado:</p><ul className="text-left space-y-1 mb-3">
               {usedIngredientsReport.map((report, idx) => <li key={idx} className="text-sm">• {report}</li>)}
             </ul><p className="text-sm mt-3 pt-3 border-t border-gray-200">Se conservará por aproximadamente {daysRemaining} días.</p></div>
           ) : `Se conservará por aproximadamente ${daysRemaining} días.`;
 
-          showModal('success', '¡Platillo guardado! 📦', reportMessage, () => setCurrentView('menu'));
+          showModal('success', '¡Platillo Guardado! 📦', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
-          console.error('Error al guardar platillo:', error);
-          showModal('error', 'Error', `Error al guardar: ${error.message}`);
+          console.error('Error al Guardar Platillo:', error);
+          showModal('error', 'Error', `Error al Guardar: ${error.message}`);
         } finally { setSaving(false); }
       }
     );
@@ -230,7 +232,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
 
       <div className="max-w-3xl mx-auto relative z-10">
         <button onClick={() => setCurrentView('recipe-results')} className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105">
-          ← Volver a resultados
+          ← Volver a Resultados
         </button>
         
         <div className="card-food rounded-2xl p-8">
@@ -247,27 +249,30 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           
           <div className="mb-8">
             <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
-              <span className="text-2xl">🥗</span> Ingredientes de tu inventario
+              <span className="text-2xl">🥗</span> Ingredientes de tu Inventario
             </h3>
             <p className="text-sm text-gray-500 mb-4">Marca los que usaste y ajusta las cantidades si es necesario</p>
             <div className="space-y-3">
-              {usedIngredients.filter(ing => ing.unit !== 'porción').map((ing, index) => (
-                <div key={index} className={`border-2 rounded-xl p-4 transition-all ${ing.used ? 'border-food-200 bg-white shadow-md' : 'border-gray-200 bg-gray-50'}`}>
+              {usedIngredients
+              .map((ing, originalIndex) => ({ ...ing, originalIndex }))
+              .filter(ing => ing.unit !== 'porción')
+              .map((ing) => (
+                <div key={ing.originalIndex} className={`border-2 rounded-xl p-4 transition-all ${ing.used ? 'border-food-200 bg-white shadow-md' : 'border-gray-200 bg-gray-50'}`}>
                   <div className="flex items-start gap-3">
-                    <div onClick={() => toggleIngredient(index)} className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${ing.used ? 'border-food-500 bg-food-500' : 'border-gray-300 hover:border-food-300'}`}>
+                    <div onClick={() => toggleIngredient(ing.originalIndex)} className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${ing.used ? 'border-food-500 bg-food-500' : 'border-gray-300 hover:border-food-300'}`}>
                       {ing.used && <Check size={16} className="text-white" />}
                     </div>
                     <div className="flex-1">
                       <p className={`font-bold text-lg ${!ing.used ? 'line-through text-gray-400' : 'text-gray-800'}`}>{ing.name}</p>
                       {ing.used && (
                         <div className="flex gap-2 mt-3">
-                          <input type="number" step="0.01" value={ing.usedQuantity} onChange={(e) => handleTempChange(index, e.target.value)} onBlur={() => handleQuantityBlur(index)} className="w-28 px-3 py-2 border-2 border-food-200 rounded-lg text-sm focus:ring-2 focus:ring-food-500 focus:border-transparent" placeholder="Cantidad" />
+                          <input type="number" step="0.01" value={ing.usedQuantity} onChange={(e) => handleTempChange(ing.originalIndex, e.target.value)} onBlur={() => handleQuantityBlur(ing.originalIndex)} className="w-28 px-3 py-2 border-2 border-food-200 rounded-lg text-sm focus:ring-2 focus:ring-food-500 focus:border-transparent" placeholder="Cantidad" />
                           <div className="px-4 py-2 rounded-lg bg-food-100 text-food-700 text-sm font-bold border-2 border-food-200">{ing.usedUnit}</div>
                         </div>
                       )}
                     </div>
                     <div className="text-right bg-food-50 px-3 py-2 rounded-lg">
-                      <p className="text-xs text-gray-500 font-medium">Receta sugiere:</p>
+                      <p className="text-xs text-gray-500 font-medium">Receta Sugiere:</p>
                       <p className="text-sm text-food-700 font-bold">{formatQuantity(ing.quantity, 2)} {ing.unit || ''}</p>
                     </div>
                   </div>
@@ -292,7 +297,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           {recipe.prepTime && (
             <div className="bg-gradient-to-r from-food-50 to-teal-50 border-2 border-food-200 rounded-xl p-4 mb-6 flex items-center gap-3">
               <div className="w-12 h-12 bg-food-500 rounded-xl flex items-center justify-center"><Clock className="text-white" size={24} /></div>
-              <div><p className="text-sm text-food-600 font-medium">Tiempo de preparación</p><p className="text-2xl font-bold text-food-800">{recipe.prepTime} <span className="text-base font-normal">minutos</span></p></div>
+              <div><p className="text-sm text-food-600 font-medium">Tiempo de Preparación</p><p className="text-2xl font-bold text-food-800">{recipe.prepTime} <span className="text-base font-normal">minutos</span></p></div>
             </div>
           )}
           
@@ -318,16 +323,20 @@ function missingIngredientsSection(missingIngredients) {
     <div className="mb-6 bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
       <h3 className="text-lg font-bold text-yellow-800 mb-3 flex items-center gap-2"><span className="text-xl">🛒</span> Ingredientes Adicionales Necesarios</h3>
       <ul className="space-y-2">
-        {validIngredients.map((ing, idx) => (
-          <li key={idx} className="text-yellow-700 flex items-center gap-2">
-            <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-            {formatQuantity(ing.quantity) !== 'Al gusto' && formatQuantity(ing.quantity) !== '' ? (
-              <><span className="font-medium">{formatQuantity(ing.quantity)} {ing.unit || ''} de </span><span className="font-bold">{ing.name}</span></>
-            ) : (
-              <><span className="font-medium">Al gusto de </span><span className="font-bold">{ing.name}</span></>
-            )}
-          </li>
-        ))}
+        {validIngredients.map((ing, idx) => {
+          const parsed = parseSafeQuantity(ing.quantity);
+          const qtyText = formatQuantity(ing.quantity);
+          return (
+            <li key={idx} className="text-yellow-700 flex items-center gap-2">
+              <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+              {parsed.type === 'number' ? (
+                <><span className="font-medium">{qtyText} {ing.unit || ''} de </span><span className="font-bold">{ing.name}</span></>
+              ) : (
+                <><span className="font-medium">{qtyText || 'Al gusto'} de </span><span className="font-bold">{ing.name}</span></>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

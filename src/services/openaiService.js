@@ -171,9 +171,11 @@ export const generateRecipe = async ({
     - Si un ingrediente NO está en la lista de disponibles, DEBE ir en "missingIngredients", sin excepción.
 
     FORMATO DE CANTIDADES (MUY IMPORTANTE):
-    - Si la cantidad de un ingrediente NO es un número (por ejemplo: "al gusto", "una pizca", "suficiente"), la primera letra DEBE ir en MAYÚSCULA.
-    - Ejemplos correctos: "Al gusto", "Una pizca", "Suficiente".
-    - NUNCA escribas cantidades no numéricas en minúsculas.
+    - Para cualquier vegetal, proteína, lácteo, cereal, fruta o ingrediente principal: USA SIEMPRE un número concreto como cantidad (ejemplos: 100, 200, 2, 0.5). NUNCA uses "Suficiente", "Cantidad necesaria", "Lo necesario" ni ninguna variante vaga para estos ingredientes.
+    - "Al gusto" ÚNICAMENTE está permitido para: sal, pimienta, salsa picante u otro condimento puro donde realmente no existe una medida fija.
+    - "Una pizca" ÚNICAMENTE está permitido para especias secas como comino, orégano, canela.
+    - "Suficiente" NUNCA es una cantidad válida. Si no tienes certeza de la cantidad, estima una razonable basada en las porciones.
+    - Cuando uses texto no numérico (solo los casos permitidos arriba), escribe la primera letra en MAYÚSCULA.
 
     Para recetas válidas proporciona:
     1. Nombre atractivo de la receta
@@ -232,7 +234,7 @@ export const generateRecipe = async ({
           json_schema: jsonSchema
         },
         temperature: regenerate ? 0.7 : 0.5,
-        max_tokens: 800
+        max_tokens: 1500
       }, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000
@@ -270,7 +272,6 @@ export const generateRecipe = async ({
       throw err;
     }
 
-    normalized.recipe.portionWarning = normalized.portionWarning;
     return [normalized.recipe];
   } catch (error) {
     console.error('Error crítico en generateRecipe:', error);

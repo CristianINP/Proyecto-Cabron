@@ -7,6 +7,7 @@
  */
 export function cleanText(value) {
   if (value === null || value === undefined) return null;
+  if (typeof value === 'object') return null;
 
   const str = String(value).trim();
 
@@ -125,9 +126,9 @@ export function normalizeOpenAIResponse(rawResponse) {
     };
   }
 
-  // Normalizar portionWarning
+  // Normalizar portionWarning — solo acepta string, cualquier otro tipo se descarta
   let portionWarning = null;
-  if (recipe.portionWarning) {
+  if (typeof recipe.portionWarning === 'string') {
     const cleaned = cleanText(recipe.portionWarning);
     if (cleaned) {
       portionWarning = cleaned;

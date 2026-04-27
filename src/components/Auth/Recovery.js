@@ -25,7 +25,7 @@ const Recovery = ({ setCurrentView }) => {
 
     // Validar campo vacío
     if (!email) {
-      setError('Por favor ingresa tu correo electrónico');
+      setError('Por favor ingrese su Correo Electrónico');
       setLoading(false);
       return;
     }
@@ -33,7 +33,7 @@ const Recovery = ({ setCurrentView }) => {
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Formato de correo electrónico inválido');
+      setError('Formato de Correo Electrónico Inválido');
       setLoading(false);
       return;
     }
@@ -44,20 +44,20 @@ const Recovery = ({ setCurrentView }) => {
       setSuccess(true);
       setEmail(''); // Limpiar el campo
     } catch (error) {
-      console.error('Error al enviar email:', error);
+      console.error('Error al Enviar Email:', error);
       
       switch (error.code) {
         case 'auth/user-not-found':
-          setError('No existe una cuenta con este correo electrónico');
+          setError('No existe una Cuenta asociada a este Correo Electrónico');
           break;
         case 'auth/invalid-email':
-          setError('Correo electrónico inválido');
+          setError('Correo Electrónico Inválido');
           break;
         case 'auth/too-many-requests':
-          setError('Demasiados intentos. Intenta más tarde');
+          setError('Demasiados Intentos. Intente más tarde');
           break;
         default:
-          setError('Error al enviar el correo. Intenta nuevamente');
+          setError('Error al enviar el Correo. Intente nuevamente');
       }
     } finally {
       setLoading(false);
@@ -104,7 +104,7 @@ const Recovery = ({ setCurrentView }) => {
             <form onSubmit={handleRecovery} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-cream-800 mb-2">
-                  📧 Correo electrónico
+                  📧 Correo Electrónico
                 </label>
                 <input 
                   type="email"
@@ -135,7 +135,7 @@ const Recovery = ({ setCurrentView }) => {
                   </>
                 ) : (
                   <>
-                    📧 Enviar enlace de recuperación
+                    📧 Enviar Enlace de Recuperación
                   </>
                 )}
               </button>
@@ -146,7 +146,7 @@ const Recovery = ({ setCurrentView }) => {
                 className="w-full text-food-600 py-2 font-bold hover:text-food-700 transition hover:scale-105"
                 disabled={loading}
               >
-                ← Volver al inicio de sesión
+                ← Volver al Inicio de Sesión
               </button>
             </form>
           </>
@@ -157,11 +157,11 @@ const Recovery = ({ setCurrentView }) => {
               <div className="text-6xl mb-4 animate-bounce">✅</div>
               
               <h2 className="text-2xl font-bold text-food-800 mb-3 font-cooking">
-                ¡Correo enviado! 📧
+                ¡Correo Enviado! 📧
               </h2>
               
               <p className="text-food-600 mb-4">
-                Revisa tu bandeja de entrada y sigue las instrucciones para restablecer tu contraseña.
+                Revise su bandeja de entrada y siga las instrucciones para restablecer su contraseña.
               </p>
 
               {/* NUEVA SECCIÓN: Aviso de spam */}
@@ -173,7 +173,7 @@ const Recovery = ({ setCurrentView }) => {
                       ¿No ves el correo?
                     </p>
                     <p className="text-sm text-amber-700 leading-relaxed">
-                      Verifique su carpeta de <strong>spam</strong> o <strong>correo no deseado</strong> 📮
+                      Verifique en su carpeta de <strong>spam</strong> o <strong>correo no deseado</strong> 📮
                     </p>
                   </div>
                 </div>
@@ -182,7 +182,7 @@ const Recovery = ({ setCurrentView }) => {
               {/* Nota informativa */}
               <div className="bg-food-50 border-2 border-food-200 rounded-xl p-3 mb-6">
                 <p className="text-sm text-food-800">
-                  <strong>💡 Nota:</strong> El correo de recuperación se enviará siempre y cuando la dirección de correo electrónico se encuentre registrada en nuestro sistema.
+                  <strong>💡 Nota:</strong> El correo de recuperación se enviará siempre y cuando la dirección de correo electrónico ingresada se encuentre registrada en nuestro sistema.
                 </p>
               </div>
               
@@ -190,7 +190,7 @@ const Recovery = ({ setCurrentView }) => {
                 onClick={() => setCurrentView('login')}
                 className="w-full bg-gradient-to-r from-food-500 to-food-600 text-white py-3 rounded-xl font-bold hover:from-food-600 hover:to-food-700 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
               >
-                ← Volver al inicio de sesión
+                ← Volver al Inicio de Sesión
               </button>
             </div>
           </>

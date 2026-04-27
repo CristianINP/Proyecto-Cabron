@@ -1,8 +1,8 @@
 // src/components/Recipes/RecipeResults.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
 import { generateRecipe } from '../../services/openaiService';
-import { formatQuantity, cleanText } from '../../utils/recipeHelpers';
+import { formatQuantity, parseSafeQuantity, cleanText } from '../../utils/recipeHelpers';
 
 const RecipeResults = ({ 
   setCurrentView, 
@@ -13,6 +13,7 @@ const RecipeResults = ({
   setGeneratedRecipes
 }) => {
   const [generating, setGenerating] = useState(false);
+  const isGeneratingRef = useRef(false);
   const [error, setError] = useState('');
   const [usedRecipeNames, setUsedRecipeNames] = useState([]);
 
@@ -45,13 +46,14 @@ const RecipeResults = ({
   };
 
   const handleGenerateAnother = useCallback(async () => {
-    if (!lastParams || generating) {
+    if (!lastParams || isGeneratingRef.current) {
       if (!lastParams) {
         setCurrentView('generate-recipe');
       }
       return;
     }
 
+    isGeneratingRef.current = true;
     setGenerating(true);
     setError('');
 
@@ -66,44 +68,39 @@ const RecipeResults = ({
         throw new Error('No se generó ninguna receta.');
       }
 
-      setGeneratedRecipes(prevRecipes => {
-        const updated = [...prevRecipes, ...newRecipes];
-        return updated;
-      });
+      const currentTotal = recipes ? recipes.length : 0;
+      const newTargetIndex = currentTotal + newRecipes.length - 1;
+
+      setGeneratedRecipes(prevRecipes => [...prevRecipes, ...newRecipes]);
+      setCurrentIndex(newTargetIndex);
 
       const newNames = newRecipes.map(r => cleanText(r?.name)).filter(Boolean);
       setUsedRecipeNames(prev => [...prev, ...newNames]);
 
-      const currentTotal = recipes ? recipes.length : 0;
-      const newTargetIndex = currentTotal + newRecipes.length - 1;
-      
-      requestAnimationFrame(() => {
-        setCurrentIndex(newTargetIndex);
-      });
-
     } catch (error) {
       console.error('Error al generar otra receta:', error);
-      
+
       if (error.isCompatibilityError || (error.message && error.message.includes('No es posible'))) {
         setError(error.message || 'No es posible generar una receta diferente con estas condiciones.');
       } else if (error.status === 429) {
-        setError('Límite de uso alcanzado. Por favor espera un momento.');
+        setError('Límite de uso alcanzado. Por favor espere un momento.');
       } else if (error.status >= 500 || !error.status) {
-        setError('Error temporal. Intenta de nuevo en unos segundos.');
+        setError('Error temporal. Intente de nuevo en unos segundos.');
       } else {
-        setError(error.message || 'Error al generar otra receta. Intenta nuevamente.');
+        setError(error.message || 'Error al generar otra receta. Intente nuevamente.');
       }
     } finally {
+      isGeneratingRef.current = false;
       setGenerating(false);
     }
-  }, [lastParams, usedRecipeNames, generating, recipes, setGeneratedRecipes, setCurrentIndex, setCurrentView]);
+  }, [lastParams, usedRecipeNames, recipes, setGeneratedRecipes, setCurrentIndex, setCurrentView]);
 
   useEffect(() => {
     if (recipes && recipes.length > 0) {
       const names = recipes.map(r => cleanText(r?.name)).filter(Boolean);
       setUsedRecipeNames(names);
     }
-  }, [recipes, currentIndex]);
+  }, [recipes]);
 
   if (!recipes || recipes.length === 0) {
     return (
@@ -114,7 +111,7 @@ const RecipeResults = ({
         
         <div className="text-center relative z-10 card-food p-8 rounded-2xl">
           <div className="text-6xl mb-4">🍽️</div>
-          <p className="text-gray-600 mb-4 text-lg font-medium">No hay recetas generadas</p>
+          <p className="text-gray-600 mb-4 text-lg font-medium">No hay Recetas Generadas</p>
           <button
             onClick={() => setCurrentView('generate-recipe')}
             className="btn-food"
@@ -133,40 +130,14 @@ const RecipeResults = ({
       <div className="absolute bottom-10 right-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '1.5s' }}>🍳</div>
       
       <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col relative z-10">
-        <div className="flex items-center justify-between mb-6">
-          <button 
-            onClick={() => setCurrentView('generate-recipe')} 
-            className="flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
-          >
-            ← Volver
-          </button>
-          
-          <div className="flex flex-col items-center gap-3">
-            <div className="backdrop-blur-md bg-white/80 border-2 border-food-200 shadow-sm rounded-2xl px-5 py-3 text-center transition-all duration-300 hover:shadow-md">
-              <p className="text-sm font-bold text-gray-800">
-                ¿No te convenció esta receta?
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                No te preocupes, genera otra 🍽️
-              </p>
-            </div>
-
-            <button
-              onClick={handleGenerateAnother}
-              disabled={generating || !lastParams}
-              className="group flex items-center gap-2 bg-food-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:bg-food-600 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw
-                size={18}
-                className={`
-                  transition-transform duration-500
-                  ${generating ? 'animate-spin' : 'group-hover:rotate-180'}
-                `}
-              />
-              {generating ? 'Generando...' : 'Generar otra receta'}
-            </button>
-          </div>
-        </div>
+       <div className="flex items-center justify-between mb-6">
+           <button 
+             onClick={() => setCurrentView('generate-recipe')} 
+             className="flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
+           >
+             ← Volver
+           </button>
+         </div>
         
         {error && (
           <div className="bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 rounded-xl text-sm mb-4 flex items-center gap-2">
@@ -175,130 +146,174 @@ const RecipeResults = ({
           </div>
         )}
         
-        <div className="flex-1 flex items-center justify-center">
-          <div className="card-food rounded-2xl p-8 w-full max-w-3xl transform hover:scale-[1.02] transition-all duration-300">
-            <div className="mb-6 text-center">
-              <div className="inline-block text-5xl mb-4 animate-bounce">🍳</div>
-              <h3 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center tracking-tight">
-                {cleanText(currentRecipe?.name) || 'Receta sin nombre'}
-              </h3>
-              <div className="flex flex-wrap gap-2 justify-center mb-4">
-                {Array.isArray(currentRecipe?.categories) && currentRecipe.categories.map((cat, idx) => {
-                  const cleanCat = cleanText(cat);
-                  return cleanCat ? (
-                    <span 
-                      key={idx}
-                      className="bg-food-100 text-food-700 px-4 py-2 rounded-full text-sm font-bold"
-                    >
-                      {cleanCat}
-                    </span>
-                  ) : null;
-                })}
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-food-50 to-teal-50 rounded-xl p-6 mb-6 border-2 border-food-100">
-              <p className="text-lg text-gray-700 leading-relaxed mb-4">
-                <strong className="text-food-700">Ingredientes principales:</strong>{' '}
-                {Array.isArray(currentRecipe?.ingredients) && currentRecipe.ingredients.length > 0
-                  ? currentRecipe.ingredients.slice(0, 5).map(ing => ing.name).join(', ')
-                  : 'No especificados'
-                }
-              </p>
-              <div className="flex items-center justify-center gap-2 text-gray-600">
-                <div className="text-center bg-white rounded-xl px-6 py-3 shadow-md border-2 border-food-100">
-                  <p className="text-3xl font-bold text-food-600">
-                    {currentRecipe.servings || 2}
-                  </p>
-                  <p className="text-xs text-gray-600 font-medium">
-                    {currentRecipe.servings === 1 ? 'Persona' : 'Personas'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {portionWarning && (
-              <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">⚠️</span>
-                  <div>
-                    <p className="text-sm font-bold text-orange-800 mb-1">Advertencia de porciones</p>
-                    <p className="text-sm text-orange-700">{portionWarning}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {missingIngredients.length > 0 && (
-              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">⚠️</span>
-                  <div>
-                    <p className="text-sm font-bold text-yellow-800 mb-2">Ingredientes faltantes:</p>
-                    <p className="text-sm text-yellow-700">
-                      {missingIngredients.map((ing, idx) => (
-                        <span key={idx}>
-                          {formatQuantity(ing.quantity) !== 'Al gusto' && formatQuantity(ing.quantity) !== '' ? (
-                            <>
-                              <strong>{formatQuantity(ing.quantity)} {ing.unit || ''}</strong> de <strong>{ing.name}</strong>
-                            </>
-                          ) : (
-                            <>
-                              <strong>Al gusto</strong> de <strong>{ing.name}</strong>
-                            </>
-                          )}
-                          {idx < missingIngredients.length - 1 && ', '}
-                        </span>
-                      ))}
+         <div className="flex-1 flex items-center justify-center">
+           <div className="flex w-full max-w-7xl">
+             {/* Receta principal - desplazada ligeramente a la izquierda */}
+             <div className="flex-shrink-0 w-[70%] pr-6">
+               <div className="card-food rounded-2xl p-8 w-full transform hover:scale-[1.02] transition-all duration-300">
+                 <div className="mb-6 text-center">
+                   <div className="inline-block text-5xl mb-4 animate-bounce">🍳</div>
+                   <h3 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center tracking-tight">
+                     {cleanText(currentRecipe?.name) || 'Receta sin nombre'}
+                   </h3>
+                   <div className="flex flex-wrap gap-2 justify-center mb-4">
+                     {Array.isArray(currentRecipe?.categories) && currentRecipe.categories.map((cat, idx) => {
+                       const cleanCat = cleanText(cat);
+                       return cleanCat ? (
+                         <span 
+                           key={idx}
+                           className="bg-food-100 text-food-700 px-4 py-2 rounded-full text-sm font-bold"
+                         >
+                           {cleanCat}
+                         </span>
+                       ) : null;
+                     })}
+                   </div>
+                 </div>
+                 
+                 <div className="bg-gradient-to-r from-food-50 to-teal-50 rounded-xl p-6 mb-6 border-2 border-food-100">
+                   <p className="text-lg text-gray-700 leading-relaxed mb-4">
+                     <strong className="text-food-700">Ingredientes Principales:</strong>{' '}
+                     {Array.isArray(currentRecipe?.ingredients) && currentRecipe.ingredients.length > 0
+                       ? currentRecipe.ingredients.slice(0, 5).map(ing => ing.name).join(', ')
+                       : 'No especificados'
+                     }
+                   </p>
+                   <div className="flex items-center justify-center gap-2 text-gray-600">
+                     <div className="text-center bg-white rounded-xl px-6 py-3 shadow-md border-2 border-food-100">
+                       <p className="text-3xl font-bold text-food-600">
+                         {currentRecipe.servings || 2}
+                       </p>
+                       <p className="text-xs text-gray-600 font-medium">
+                         {currentRecipe.servings === 1 ? 'Persona' : 'Personas'}
+                       </p>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 {portionWarning && (
+                   <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-4 mb-6">
+                     <div className="flex items-start gap-3">
+                       <span className="text-2xl">⚠️</span>
+                       <div>
+                         <p className="text-sm font-bold text-orange-800 mb-1">Advertencia de Porciones</p>
+                         <p className="text-sm text-orange-700">{portionWarning}</p>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+                 
+                 {missingIngredients.length > 0 && (
+                   <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4 mb-4">
+                     <div className="flex items-start gap-3">
+                       <span className="text-2xl">⚠️</span>
+                       <div>
+                         <p className="text-sm font-bold text-yellow-800 mb-2">Ingredientes Faltantes:</p>
+                         <p className="text-sm text-yellow-700">
+                           {missingIngredients.map((ing, idx) => {
+                               const parsed = parseSafeQuantity(ing.quantity);
+                               const qtyText = formatQuantity(ing.quantity);
+                               return (
+                                 <span key={idx}>
+                                   {parsed.type === 'number' ? (
+                                     <><strong>{qtyText} {ing.unit || ''}</strong> de <strong>{ing.name}</strong></>
+                                   ) : (
+                                     <><strong>{qtyText || 'Al gusto'}</strong> de <strong>{ing.name}</strong></>
+                                   )}
+                                   {idx < missingIngredients.length - 1 && ', '}
+                                 </span>
+                               );
+                             })}
+                         </p>
+                       </div>
+                     </div>
+                   </div>
+                 )}
+                 
+                 <div className="flex gap-4">
+                   <button 
+                     onClick={handleViewDetails}
+                     className="flex-1 btn-food text-lg py-4 flex items-center justify-center gap-2 shadow-xl"
+                   >
+                     <Heart size={20} />
+                     Ver Receta Completa
+                   </button>
+                   
+                   {recipes.length > 1 && (
+                     <>
+                       <button 
+                         onClick={handlePrevious}
+                         className="bg-white border-2 border-food-200 text-food-700 px-5 py-4 rounded-xl font-bold hover:bg-food-50 hover:border-food-300 transition flex items-center justify-center shadow-lg"
+                       >
+                         <ChevronLeft size={24} />
+                       </button>
+                       <button 
+                         onClick={handleNext}
+                         className="bg-white border-2 border-food-200 text-food-700 px-5 py-4 rounded-xl font-bold hover:bg-food-50 hover:border-food-300 transition flex items-center justify-center shadow-lg"
+                       >
+                         <ChevronRight size={24} />
+                       </button>
+                     </>
+                   )}
+                 </div>
+               </div>
+             </div>
+             
+              {/* Panel lateral derecho - módulo de sugerencias */}
+              <div className="flex-shrink-0 w-[30%] pl-6">
+                <div className="card-food rounded-2xl p-6 w-full flex flex-col items-center justify-center text-center">
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-gray-800">
+                      ¿No te convenció esta receta?
                     </p>
+                    <div className="flex flex-col items-center gap-3">
+                      <p className="text-xs text-gray-500">
+                        No te preocupes, Genera otra.
+                      </p>
+                      <div className="flex gap-2 text-food-400">
+                        <span>✦</span>
+                        <span>✦</span>
+                        <span>✦</span>
+                      </div>
+                    </div>
                   </div>
+                  
+                  <button
+                    onClick={handleGenerateAnother}
+                    disabled={generating || !lastParams}
+                    className="mt-6 w-full group flex items-center justify-center gap-2 bg-food-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:bg-food-600 hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw
+                      size={18}
+                      className={`
+                        transition-transform duration-500
+                        ${generating ? 'animate-spin' : 'group-hover:rotate-180'}
+                      `}
+                    />
+                    {generating ? 'Generando...' : 'Generar otra Receta'}
+                  </button>
                 </div>
               </div>
-            )}
-            
-            <div className="flex gap-4">
-              <button 
-                onClick={handleViewDetails}
-                className="flex-1 btn-food text-lg py-4 flex items-center justify-center gap-2 shadow-xl"
-              >
-                <Heart size={20} />
-                Ver Receta Completa
-              </button>
-              
-              {recipes.length > 1 && (
-                <>
-                  <button 
-                    onClick={handlePrevious}
-                    className="bg-white border-2 border-food-200 text-food-700 px-5 py-4 rounded-xl font-bold hover:bg-food-50 hover:border-food-300 transition flex items-center justify-center shadow-lg"
-                  >
-                    <ChevronLeft size={24} />
-                  </button>
-                  <button 
-                    onClick={handleNext}
-                    className="bg-white border-2 border-food-200 text-food-700 px-5 py-4 rounded-xl font-bold hover:bg-food-50 hover:border-food-300 transition flex items-center justify-center shadow-lg"
-                  >
-                    <ChevronRight size={24} />
-                  </button>
-                </>
-              )}
             </div>
           </div>
-        </div>
         
-        <div className="text-center mt-6 mb-4">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            {recipes.map((_, idx) => (
-              <div 
-                key={idx}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  idx === currentIndex ? 'bg-food-500 w-8' : 'bg-food-200'
+        {/* Mover el indicador de paginación al módulo de receta */}
+        <div className="flex-shrink-0 w-[70%] pr-6 pt-4">
+          <div className="text-center mt-4">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {recipes.map((_, idx) => (
+                <div 
+                  key={idx}
+                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                    idx === currentIndex ? 'bg-food-500 w-8' : 'bg-food-200'
                 }`}
-              />
-            ))}
+                />
+              ))}
+            </div>
+            <p className="text-base text-gray-600 font-bold">
+              Receta {currentIndex + 1} de {recipes.length}
+            </p>
           </div>
-          <p className="text-base text-gray-600 font-bold">
-            Receta {currentIndex + 1} de {recipes.length}
-          </p>
         </div>
       </div>
     </div>

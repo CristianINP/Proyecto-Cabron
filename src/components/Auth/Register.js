@@ -33,21 +33,21 @@ const Register = ({ setCurrentView }) => {
   const validateForm = () => {
     // Validar campos vacíos
     if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthdate) {
-      setError('Por favor completa todos los campos');
+      setError('Por favor complete todos los campos');
       return false;
     }
 
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('Formato de correo electrónico inválido');
+      setError('Formato de Correo Electrónico Inválido');
       return false;
     }
 
     // Validar contraseña (mínimo 8 caracteres, 1 mayúscula, 1 número)
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(formData.password)) {
-      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número');
+      setError('La contraseña debe contener al menos 8 caracteres, una mayúscula y un número');
       return false;
     }
 
@@ -94,22 +94,22 @@ const Register = ({ setCurrentView }) => {
       });
 
       // Si todo sale bien, Firebase Auth redirigirá automáticamente al menú
-      alert('¡Cuenta creada exitosamente! 🎉');
+      alert('¡Cuenta Creada Exitosamente! 🎉');
     } catch (error) {
-      console.error('Error al registrar:', error);
+      console.error('Error al Registrar:', error);
       
       switch (error.code) {
         case 'auth/email-already-in-use':
-          setError('Ya existe una cuenta con este correo electrónico');
+          setError('Ya existe una Cuenta con este Correo Electrónico');
           break;
         case 'auth/weak-password':
           setError('La contraseña es muy débil');
           break;
         case 'auth/invalid-email':
-          setError('Correo electrónico inválido');
+          setError('Correo Electrónico Inválido');
           break;
         default:
-          setError('Error al crear la cuenta. Intenta nuevamente');
+          setError('Error al Crear la Cuenta. Intente Nuevamente');
       }
     } finally {
       setLoading(false);
@@ -150,7 +150,7 @@ const Register = ({ setCurrentView }) => {
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              👤 Nombre de usuario
+              👤 Nombre de Usuario
             </label>
             <input 
               type="text"
@@ -165,7 +165,7 @@ const Register = ({ setCurrentView }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo electrónico
+              📧 Correo Electrónico
             </label>
             <input 
               type="email"
@@ -198,7 +198,7 @@ const Register = ({ setCurrentView }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🔐 Confirmar contraseña
+              🔐 Confirmar Contraseña
             </label>
             <input 
               type="password"
@@ -213,7 +213,7 @@ const Register = ({ setCurrentView }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🎂 Fecha de nacimiento
+              🎂 Fecha de Nacimiento
             </label>
             <input 
               type="date"
@@ -240,7 +240,7 @@ const Register = ({ setCurrentView }) => {
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                Creando cuenta...
+                Creando Cuenta...
               </>
             ) : (
               <>
@@ -255,7 +255,7 @@ const Register = ({ setCurrentView }) => {
             className="w-full text-food-600 py-2 font-bold hover:text-food-700 transition hover:scale-105"
             disabled={loading}
           >
-            ← Volver al inicio de sesión
+            ← Volver al Inicio de Sesión
           </button>
         </form>
       </div>

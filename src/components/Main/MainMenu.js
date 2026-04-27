@@ -33,7 +33,7 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
 
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce">🥗</div>
-          <h1 className="text-4xl font-bold text-food-800 mb-2 font-cooking">¡Bienvenido a Ready To Cook!</h1>
+          <h1 className="text-4xl font-bold text-food-800 mb-2 font-cooking">¡Bienvenido a Ready to Cook!</h1>
           <p className="text-food-600 text-lg">¿Qué quieres hacer hoy con tus alimentos?</p>
         </div>
 
@@ -62,7 +62,7 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
               <span className="text-4xl">{FOOD_ICONS.inventory}</span>
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Gestionar Inventario</h3>
-            <p className="text-gray-600 text-center">Consulta y organiza tus ingredientes</p>
+            <p className="text-gray-600 text-center">Consulta y Organiza tus ingredientes</p>
             <div className="absolute -bottom-2 -right-2 text-2xl opacity-50">🥬</div>
           </button>
 
@@ -75,7 +75,7 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">{FOOD_ICONS.recipes}</span>
             </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Generar Recetas</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Generar Recetas con IA</h3>
             <p className="text-gray-500 text-center text-sm">Crea recetas con tus ingredientes</p>
             <div className="absolute -bottom-2 -right-2 text-2xl opacity-30">🍳</div>
           </button>

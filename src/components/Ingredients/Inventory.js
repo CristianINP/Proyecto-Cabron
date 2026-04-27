@@ -104,8 +104,8 @@ const Inventory = ({ setCurrentView, userId }) => {
 
       setIngredients(sorted);
     } catch (error) {
-      console.error('Error al cargar ingredientes:', error);
-      showModal('error', 'Error', 'Error al cargar el inventario');
+      console.error('Error al Cargar Ingredientes:', error);
+      showModal('error', 'Error', 'Error al Cargar el Inventario');
     } finally {
       setLoading(false);
     }
@@ -128,16 +128,16 @@ const Inventory = ({ setCurrentView, userId }) => {
   const handleDelete = (id, name) => {
     showModal(
       'confirm',
-      'Eliminar ingrediente',
-      `¿Estás seguro de eliminar ${name}?`,
+      'Eliminar Ingrediente',
+      `¿Estás seguro de Eliminar ${name}?`,
       async () => {
         try {
           await deleteDoc(doc(db, `users/${userId}/ingredients`, id));
           setIngredients(ingredients.filter(ing => ing.id !== id));
-          showModal('success', '¡Eliminado!', 'Ingrediente eliminado exitosamente');
+          showModal('success', '¡Eliminado!', 'Ingrediente Eliminado Exitosamente');
         } catch (error) {
-          console.error('Error al eliminar:', error);
-          showModal('error', 'Error', 'Error al eliminar el ingrediente');
+          console.error('Error al Eliminar:', error);
+          showModal('error', 'Error', 'Error al Eliminar el Ingrediente');
         }
       }
     );
@@ -166,7 +166,7 @@ const Inventory = ({ setCurrentView, userId }) => {
     if (!newQuantity || newQuantity < 0.5) {
       showModal(
         'error',
-        'Cantidad inválida',
+        'Cantidad Inválida',
         'La cantidad debe ser mayor o igual a 0.5'
       );
       return;
@@ -175,8 +175,8 @@ const Inventory = ({ setCurrentView, userId }) => {
     // ✅ SI PASA VALIDACIÓN, ahora sí confirmar
     showModal(
       'confirm',
-      'Guardar cambios',
-      '¿Deseas guardar los cambios realizados?',
+      'Guardar Cambios',
+      '¿Desea guardar los cambios realizados?',
       async () => {
         try {
           const ingredientRef = doc(db, `users/${userId}/ingredients`, id);
@@ -226,10 +226,10 @@ const Inventory = ({ setCurrentView, userId }) => {
 
           setEditingId(null);
           setEditForm({});
-          showModal('success', '¡Actualizado!', 'Ingrediente actualizado exitosamente');
+          showModal('success', '¡Actualizado!', 'Ingrediente Actualizado Exitosamente');
         } catch (error) {
           console.error('Error al actualizar:', error);
-          showModal('error', 'Error', 'Error al actualizar el ingrediente');
+          showModal('error', 'Error', 'Error al Actualizar el Ingrediente');
         }
       }
     );
@@ -250,7 +250,7 @@ const Inventory = ({ setCurrentView, userId }) => {
         
         <div className="text-center relative z-10">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
-          <p className="text-food-600 font-semibold">Cargando inventario...</p>
+          <p className="text-food-600 font-semibold">Cargando Inventario...</p>
         </div>
       </div>
     );
@@ -268,7 +268,7 @@ const Inventory = ({ setCurrentView, userId }) => {
           onClick={() => setCurrentView('menu')}
           className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
         >
-          ← Volver al menú
+          ← Volver al Menú
         </button>
 
         <div className="card-food rounded-2xl p-8">
@@ -280,12 +280,12 @@ const Inventory = ({ setCurrentView, userId }) => {
           {ingredients.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4 animate-bounce">🥬</div>
-              <p className="text-gray-600 mb-4 text-lg">No tienes ingredientes registrados</p>
+              <p className="text-gray-600 mb-4 text-lg">No tienes Ingredientes Registrados</p>
               <button
                 onClick={() => setCurrentView('register-ingredient')}
                 className="btn-food"
               >
-                🥗 Registrar primer ingrediente
+                🥗 Registrar Primer Ingrediente
               </button>
             </div>
           ) : (
