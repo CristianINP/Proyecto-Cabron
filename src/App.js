@@ -13,6 +13,7 @@ import RegisterIngredient from './components/Ingredients/RegisterIngredient';
 import GenerateRecipe from './components/Recipes/GenerateRecipe';
 import RecipeResults from './components/Recipes/RecipeResults';
 import RecipeDetail from './components/Recipes/RecipeDetail';
+import PendingDishes from './components/Dishes/PendingDishes';
 
 function App() {
   // Estado para controlar la vista actual
@@ -119,6 +120,14 @@ function App() {
           <RecipeDetail
             setCurrentView={setCurrentView}
             recipe={selectedRecipe}
+            userId={user?.uid}
+          />
+        );
+        
+      case 'pending-dishes':
+        return (
+          <PendingDishes
+            setCurrentView={setCurrentView}
             userId={user?.uid}
           />
         );
