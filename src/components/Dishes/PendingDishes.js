@@ -1,17 +1,16 @@
 // src/components/Dishes/PendingDishes.js
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { getDaysRemaining, isExpired } from '../../utils/dateCalculations';
-import { XCircle } from 'lucide-react';
+import { XCircle, ChevronDown, ChevronUp, Clock, CheckCircle} from 'lucide-react';
 import Modal from '../../utils/Modal';
 
 const PendingDishes = ({ setCurrentView, userId }) => {
   const [dishes, setDishes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
-  
-  // Estados para modales
+
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     type: 'confirm',
@@ -31,8 +30,7 @@ const PendingDishes = ({ setCurrentView, userId }) => {
         id: doc.id,
         ...doc.data()
       }));
-      
-      // Calcular días restantes actualizados
+
       const updatedDishes = dishesData.map(dish => {
         const daysRemaining = getDaysRemaining(dish.expirationDate);
         return {
@@ -41,14 +39,13 @@ const PendingDishes = ({ setCurrentView, userId }) => {
           expired: isExpired(dish.expirationDate)
         };
       });
-      
-      // Ordenar: caducados al final
+
       const sorted = updatedDishes.sort((a, b) => {
         if (a.expired && !b.expired) return 1;
         if (!a.expired && b.expired) return -1;
-        return 0;
+        return a.daysRemaining - b.daysRemaining;
       });
-      
+
       setDishes(sorted);
     } catch (error) {
       console.error('Error al cargar platillos:', error);
@@ -59,13 +56,7 @@ const PendingDishes = ({ setCurrentView, userId }) => {
   };
 
   const showModal = (type, title, message, onConfirm = () => {}) => {
-    setModalConfig({
-      isOpen: true,
-      type,
-      title,
-      message,
-      onConfirm
-    });
+    setModalConfig({ isOpen: true, type, title, message, onConfirm });
   };
 
   const closeModal = () => {
@@ -79,11 +70,9 @@ const PendingDishes = ({ setCurrentView, userId }) => {
       `¿Deseas marcar "${name}" como terminado?`,
       async () => {
         try {
-          // Solo eliminar el platillo de pendientes
-          // NO actualizar inventario porque ya se descontó cuando se guardó como pendiente
           await deleteDoc(doc(db, `users/${userId}/pendingDishes`, id));
           setDishes(dishes.filter(dish => dish.id !== id));
-          showModal('success', 'Platillo terminado', 'Puedes consultar esta receta en tu historial. 😋');
+          showModal('success', '!Platillo terminado¡', 'Puedes consultar esta receta en tu historial.');
         } catch (error) {
           console.error('Error al eliminar:', error);
           showModal('error', 'Error', 'Error al marcar como terminado');
@@ -98,36 +87,54 @@ const PendingDishes = ({ setCurrentView, userId }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">Cargando...</p>
+      <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🍳</div>
+        <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🥗</div>
+        <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
+        <div className="text-center relative z-10">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
+          <p className="text-food-600 font-semibold">Cargando platillos...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <button 
-          onClick={() => setCurrentView('menu')} 
-          className="mb-6 text-emerald-600 font-semibold hover:underline"
+    <div className="min-h-screen bg-food-pattern p-6 relative overflow-hidden">
+      {/* Emojis decorativos */}
+      <div className="absolute top-10 left-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '0.5s' }}>🍳</div>
+      <div className="absolute top-20 right-20 text-4xl opacity-10 animate-pulse" style={{ animationDelay: '1s' }}>🥗</div>
+      <div className="absolute bottom-32 left-16 text-4xl opacity-10 animate-pulse" style={{ animationDelay: '1.5s' }}>🥦</div>
+      <div className="absolute bottom-10 right-10 text-5xl opacity-10 animate-pulse" style={{ animationDelay: '0s' }}>⏰</div>
+
+      <div className="max-w-4xl mx-auto relative z-10">
+        <button
+          onClick={() => setCurrentView('menu')}
+          className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105"
         >
-          ← Volver al menú
+          ← Volver al Menú
         </button>
-        
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6">Platillos Almacenados</h2>
-          
+
+        <div className="card-food rounded-2xl p-8">
+          {/* Encabezado */}
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-4xl">⏰</span>
+            <div>
+              <h2 className="text-3xl font-bold text-gray-800 font-cooking">Platillos Almacenados</h2>
+              <p className="text-food-600 text-sm mt-1">Recetas guardadas para terminar después</p>
+            </div>
+          </div>
+
           {dishes.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">No tienes platillos almacenados</p>
+            <div className="text-center py-12 bg-white/60 rounded-2xl border-2 border-dashed border-food-200">
+              <div className="text-6xl mb-4">🍽️</div>
+              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes platillos almacenados</p>
+              <p className="text-gray-500 text-sm mb-6">Guarda una receta como pendiente para verla aquí</p>
               <button
                 onClick={() => setCurrentView('generate-recipe')}
-                className="bg-emerald-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-emerald-600 transition"
+                className="btn-food"
               >
-                Generar una receta
+                🥗 Generar una receta
               </button>
             </div>
           ) : (
@@ -137,32 +144,45 @@ const PendingDishes = ({ setCurrentView, userId }) => {
                 const isExpiringSoon = !dish.expired && dish.daysRemaining <= 2;
 
                 return (
-                  <div 
-                    key={dish.id} 
-                    className={`border-2 rounded-xl p-6 transition ${
-                      dish.expired 
-                        ? 'border-gray-300 bg-gray-50' 
-                        : 'border-gray-200 hover:border-emerald-300'
+                  <div
+                    key={dish.id}
+                    className={`border-2 rounded-xl p-6 transition-all duration-200 ${
+                      dish.expired
+                        ? 'border-gray-300 bg-gray-50 opacity-75'
+                        : isExpiringSoon
+                          ? 'border-red-300 bg-red-50 warning-glow'
+                          : 'border-food-200 bg-white hover:border-food-400 hover:shadow-md'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 
-                          className="text-xl font-bold text-gray-800 mb-2 cursor-pointer hover:text-emerald-600"
+                        {/* Nombre (clickeable para expandir) */}
+                        <button
                           onClick={() => toggleExpand(dish.id)}
+                          className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-food-600 transition mb-1 text-left"
                         >
-                          {dish.name} {isExpanded ? '▼' : '▶'}
-                        </h3>
-                        
-                        {/* Ingredientes expandidos */}
-                        {isExpanded && dish.ingredients && (
-                          <div className="mt-3 mb-3">
-                            <p className="text-sm font-semibold text-gray-700 mb-2">Ingredientes usados:</p>
-                            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                          {dish.name}
+                          {isExpanded
+                            ? <ChevronUp size={20} className="text-food-500 flex-shrink-0" />
+                            : <ChevronDown size={20} className="text-food-400 flex-shrink-0" />
+                          }
+                        </button>
+
+                        {isExpiringSoon && !dish.expired && (
+                          <span className="badge-priority text-xs">⚠️ Próximo a caducar</span>
+                        )}
+
+                        {/* Ingredientes (expandido) */}
+                        {isExpanded && dish.ingredients && dish.ingredients.length > 0 && (
+                          <div className="mt-4 mb-3">
+                            <p className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                              <span>🥗</span> Ingredientes usados:
+                            </p>
+                            <div className="bg-food-50 rounded-xl p-3 space-y-2 border border-food-100">
                               {dish.ingredients.map((ing, idx) => (
-                                <div key={idx} className="flex items-center justify-between border-b border-gray-200 pb-2 last:border-0">
+                                <div key={idx} className="flex items-center justify-between border-b border-food-100 pb-2 last:border-0">
                                   <span className="text-sm text-gray-800 font-medium">{ing.name}</span>
-                                  <span className="text-sm text-gray-600 bg-white px-2 py-1 rounded">
+                                  <span className="text-sm text-food-700 bg-white px-3 py-1 rounded-full border border-food-200 font-semibold">
                                     {ing.quantity} {ing.unit}
                                   </span>
                                 </div>
@@ -171,50 +191,59 @@ const PendingDishes = ({ setCurrentView, userId }) => {
                           </div>
                         )}
 
-                        {/* Instrucciones (si están disponibles) */}
+                        {/* Instrucciones (expandido) */}
                         {isExpanded && dish.instructions && dish.instructions.length > 0 && (
                           <div className="mt-3">
-                            <p className="text-sm font-semibold text-gray-700 mb-2">Instrucciones:</p>
-                            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-                              {dish.instructions.map((instruction, idx) => (
-                                <li key={idx}>{instruction}</li>
-                              ))}
-                            </ol>
+                            <p className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                              <span>📝</span> Instrucciones:
+                            </p>
+                            <div className="bg-white/60 rounded-xl p-3 border border-food-100">
+                              <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
+                                {dish.instructions.map((instruction, idx) => (
+                                  <li key={idx} className="leading-relaxed">{instruction}</li>
+                                ))}
+                              </ol>
+                            </div>
                           </div>
                         )}
                       </div>
-                      
-                      {/* Estado de caducidad */}
-                      <div className={`px-4 py-2 rounded-lg ml-4 ${
+
+                      {/* Badge de caducidad */}
+                      <div className={`px-4 py-3 rounded-xl ml-4 text-center flex-shrink-0 ${
                         dish.expired
-                          ? 'bg-gray-200 text-gray-700'
-                          : isExpiringSoon 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-green-100 text-green-700'
+                          ? 'bg-gray-200 text-gray-600'
+                          : isExpiringSoon
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-fresh-100 text-fresh-700'
                       }`}>
                         {dish.expired ? (
                           <>
                             <div className="flex items-center gap-1 justify-center mb-1">
-                              <XCircle size={16} />
-                              <p className="text-xs font-semibold">Caducado</p>
+                              <XCircle size={14} />
+                              <p className="text-xs font-bold">Caducado</p>
                             </div>
-                            <p className="text-sm font-bold text-center">
+                            <p className="text-sm font-bold">
                               Hace {Math.abs(dish.daysRemaining)} días
                             </p>
                           </>
                         ) : (
                           <>
-                            <p className="text-xs font-semibold">Caduca en</p>
-                            <p className="text-2xl font-bold">{dish.daysRemaining} días</p>
+                            <div className="flex items-center gap-1 justify-center mb-1">
+                              <Clock size={14} />
+                              <p className="text-xs font-semibold">Caduca en</p>
+                            </div>
+                            <p className="text-3xl font-bold leading-none">{dish.daysRemaining}</p>
+                            <p className="text-xs mt-1">días</p>
                           </>
                         )}
                       </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => handleComplete(dish.id, dish.name)}
-                      className="w-full bg-emerald-500 text-white py-2 rounded-lg font-semibold hover:bg-emerald-600 transition"
+                      className="w-full btn-food py-3 flex items-center justify-center gap-2 font-bold"
                     >
+                      <CheckCircle size={20} />
                       Marcar como Terminado
                     </button>
                   </div>
@@ -225,7 +254,6 @@ const PendingDishes = ({ setCurrentView, userId }) => {
         </div>
       </div>
 
-      {/* Modal */}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={closeModal}

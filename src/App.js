@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
 
@@ -25,6 +25,12 @@ function App() {
   // Estado de carga
   const [loading, setLoading] = useState(true);
 
+  // Ref para bloquear la redirección automática durante el registro
+  const registrationInProgress = useRef(false);
+
+  // Ref para bloquear la redirección automática durante el login
+  const loginInProgress = useRef(false);
+
   // Estados para pasar datos entre componentes de recetas
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [generatedRecipes, setGeneratedRecipes] = useState([]);
@@ -36,12 +42,13 @@ function App() {
       setUser(currentUser);
       setLoading(false);
 
-      // Si hay usuario, ir al menú principal
-      if (currentUser) {
+      // Si hay usuario, ir al menú principal (a menos que el registro o login estén en progreso)
+      if (currentUser && !registrationInProgress.current && !loginInProgress.current) {
         setCurrentView('menu');
-      } else {
+      } else if (!currentUser) {
         setCurrentView('login');
       }
+      // Si currentUser existe pero hay una acción en progreso, no hacer nada — el callback del modal navegará
     });
 
     // Cleanup subscription
@@ -63,10 +70,13 @@ function App() {
   // Mostrar pantalla de carga
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 font-semibold">Cargando...</p>
+      <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🥕</div>
+        <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
+        <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
+        <div className="text-center relative z-10">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
+          <p className="text-food-600 font-semibold">Cargando...</p>
         </div>
       </div>
     );
@@ -76,10 +86,10 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'login':
-        return <Login setCurrentView={setCurrentView} />;
+        return <Login setCurrentView={setCurrentView} onLoginComplete={() => { loginInProgress.current = true; }} />;
 
       case 'register':
-        return <Register setCurrentView={setCurrentView} />;
+        return <Register setCurrentView={setCurrentView} onRegistrationComplete={() => { registrationInProgress.current = true; }} />;
 
       case 'recovery':
         return <Recovery setCurrentView={setCurrentView} />;

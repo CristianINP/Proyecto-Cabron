@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
+import Modal from '../../utils/Modal';
+import { UserPlus } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -12,7 +14,7 @@ const FOOD_DECORATIONS = [
   '🍌', '🍊', '🍋', '🍇', '🍓', '🥝', '🍑', '🍐', '🥜', '🫘'
 ];
 
-const Register = ({ setCurrentView }) => {
+const Register = ({ setCurrentView, onRegistrationComplete }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -22,6 +24,9 @@ const Register = ({ setCurrentView }) => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false, type: 'success', title: '', message: '', onConfirm: () => {}
+  });
 
   const handleChange = (e) => {
     setFormData({
@@ -29,6 +34,11 @@ const Register = ({ setCurrentView }) => {
       [e.target.name]: e.target.value
     });
   };
+
+  const showModal = (type, title, message, onConfirm = () => {}) => {
+    setModalConfig({ isOpen: true, type, title, message, onConfirm });
+  };
+  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
   const validateForm = () => {
     // Validar campos vacíos
@@ -40,7 +50,7 @@ const Register = ({ setCurrentView }) => {
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('Formato de Correo Electrónico Inválido');
+      setError('Formato de Correo electrónico Inválido');
       return false;
     }
 
@@ -93,20 +103,21 @@ const Register = ({ setCurrentView }) => {
         createdAt: new Date().toISOString()
       });
 
-      // Si todo sale bien, Firebase Auth redirigirá automáticamente al menú
-      alert('¡Cuenta Creada Exitosamente! 🎉');
+      // Bloquear redirección automática y mostrar modal de éxito
+      onRegistrationComplete?.();
+      showModal('success', '¡Cuenta Creada! 🎉', '¡Tu cuenta ha sido creada exitosamente! Ya puedes comenzar a gestionar tus alimentos. 🥗', () => setCurrentView('menu'));
     } catch (error) {
       console.error('Error al Registrar:', error);
       
       switch (error.code) {
         case 'auth/email-already-in-use':
-          setError('Ya existe una Cuenta con este Correo Electrónico');
+          setError('Ya existe una Cuenta con este Correo electrónico');
           break;
         case 'auth/weak-password':
           setError('La contraseña es muy débil');
           break;
         case 'auth/invalid-email':
-          setError('Correo Electrónico Inválido');
+          setError('Correo electrónico Inválido');
           break;
         default:
           setError('Error al Crear la Cuenta. Intente Nuevamente');
@@ -126,6 +137,18 @@ const Register = ({ setCurrentView }) => {
       fontSize: `${Math.random() * 1.5 + 1.5}rem`,
     }
   }));
+
+  if (loading) return (
+    <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🥕</div>
+      <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
+      <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
+      <div className="text-center relative z-10">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
+        <p className="text-food-600 font-semibold">Creando Cuenta...</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-food-pattern flex items-center justify-center p-4 relative overflow-hidden">
@@ -165,7 +188,7 @@ const Register = ({ setCurrentView }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo Electrónico
+              📧 Correo electrónico
             </label>
             <input 
               type="email"
@@ -244,7 +267,7 @@ const Register = ({ setCurrentView }) => {
               </>
             ) : (
               <>
-                🍎 Registrarse
+                <UserPlus size={20} /> Registrarse
               </>
             )}
           </button>
@@ -259,6 +282,15 @@ const Register = ({ setCurrentView }) => {
           </button>
         </form>
       </div>
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        onConfirm={modalConfig.onConfirm}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+      />
     </div>
   );
 };

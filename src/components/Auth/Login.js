@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../services/firebase';
+import Modal from '../../utils/Modal';
+import { LogIn } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -11,11 +13,19 @@ const FOOD_DECORATIONS = [
   '🍎', '🍌', '🍊', '🍋', '🍇', '🍓', '🫐', '🥝', '🍑', '🍐'
 ];
 
-const Login = ({ setCurrentView }) => {
+const Login = ({ setCurrentView, onLoginComplete }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false, type: 'success', title: '', message: '', onConfirm: () => {}
+  });
+  const showModal = (type, title, message, onConfirm = () => {}) => {
+    setModalConfig({ isOpen: true, type, title, message, onConfirm });
+  };
+  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,8 +41,15 @@ const Login = ({ setCurrentView }) => {
 
     try {
       // Intentar iniciar sesión con Firebase
-      await signInWithEmailAndPassword(auth, email, password);
-      // Si tiene éxito, onAuthStateChanged en App.js lo detectará automáticamente
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const displayName = userCredential.user.displayName || email;
+      onLoginComplete?.();
+      showModal(
+        'success',
+        '¡Bienvenido! 👋',
+        `¡Hola, ${displayName}! Has iniciado sesión exitosamente. ¡Listo para cocinar! 🍳`,
+        () => setCurrentView('menu')
+      );
     } catch (error) {
       console.error('Error al iniciar sesión:', error);
       
@@ -57,6 +74,18 @@ const Login = ({ setCurrentView }) => {
       setLoading(false);
     }
   };
+
+  if (loading) return (
+    <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🥕</div>
+      <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
+      <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
+      <div className="text-center relative z-10">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
+        <p className="text-food-600 font-semibold">Iniciando Sesión...</p>
+      </div>
+    </div>
+  );
 
   // Generar posiciones aleatorias para los emojis
   const decorationElements = FOOD_DECORATIONS.slice(0, 15).map((emoji, index) => ({
@@ -92,7 +121,7 @@ const Login = ({ setCurrentView }) => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo Electrónico
+              📧 Correo electrónico
             </label>
             <input 
               type="email" 
@@ -137,7 +166,7 @@ const Login = ({ setCurrentView }) => {
               </>
             ) : (
               <>
-                🍳 Iniciar Sesión
+                <LogIn size={20} /> Iniciar Sesión
               </>
             )}
           </button>
@@ -148,7 +177,7 @@ const Login = ({ setCurrentView }) => {
               onClick={() => setCurrentView('recovery')}
               className="text-food-600 hover:text-food-700 font-semibold transition hover:scale-105 inline-block"
             >
-              ¿Olvidaste tu Contraseña? 🥺
+              ¿Olvidaste tu Contraseña?
             </button>
           </div>
           
@@ -164,6 +193,15 @@ const Login = ({ setCurrentView }) => {
           </div>
         </form>
       </div>
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        onConfirm={modalConfig.onConfirm}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+      />
     </div>
   );
 };

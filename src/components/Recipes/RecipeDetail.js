@@ -9,15 +9,15 @@ import { formatQuantity, parseSafeQuantity } from '../../utils/recipeHelpers';
 
 const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const [usedIngredients, setUsedIngredients] = useState(
-    recipe?.ingredients?.map(ing => ({ 
-      ...ing, 
+    recipe?.ingredients?.map(ing => ({
+      ...ing,
       used: true,
       usedQuantity: ing.quantity,
       usedUnit: ing.unit
     })) || []
   );
-  const [saving, setSaving] = useState(false);
-  
+  const [savingAction, setSavingAction] = useState(null); // 'complete' | 'pending' | null
+
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
     type: 'confirm',
@@ -32,7 +32,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🥕</div>
         <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
         <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
-        
+
         <div className="text-center relative z-10 card-food p-8 rounded-2xl">
           <div className="text-6xl mb-4">🍽️</div>
           <p className="text-gray-600 mb-4 text-lg font-medium">No hay Receta Seleccionada</p>
@@ -56,7 +56,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   };
 
   const toggleIngredient = (index) => {
-    setUsedIngredients(usedIngredients.map((ing, i) => 
+    setUsedIngredients(usedIngredients.map((ing, i) =>
       i === index ? { ...ing, used: !ing.used } : ing
     ));
   };
@@ -70,7 +70,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const handleQuantityBlur = (index) => {
     const value = usedIngredients[index].usedQuantity;
     const parsed = parseSafeQuantity(value);
-    
+
     if (parsed.type !== 'number' || isNaN(parsed.number) || parsed.number < 0.25) {
       showModal(
         'error',
@@ -86,7 +86,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   };
 
   const handleUnitChange = (index, newUnit) => {
-    setUsedIngredients(usedIngredients.map((ing, i) => 
+    setUsedIngredients(usedIngredients.map((ing, i) =>
       i === index ? { ...ing, usedUnit: newUnit } : ing
     ));
   };
@@ -97,23 +97,23 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
       'Marcar como Terminada',
       '¿Está seguro de marcar esta receta como terminada? Se actualizará su inventario.',
       async () => {
-        setSaving(true);
+        setSavingAction('complete');
         try {
           const ingredientsSnapshot = await getDocs(collection(db, `users/${userId}/ingredients`));
           const usedIngredientsReport = [];
-          
+
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
             const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
-              const quantityUsed = parsedQty.type === 'number' ? parsedQty.number : 0;
-              const newQuantity = currentData.quantity - quantityUsed;
+              const quantityUsed = Math.round((parsedQty.type === 'number' ? parsedQty.number : 0) * 100) / 100;
+              const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
 
               if (newQuantity <= 0) {
                 await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
-                usedIngredientsReport.push(`${ing.name}: Usadas por completo 🥳 (Se acabó)`);
+                usedIngredientsReport.push(`${ing.name}: Inventario Utilizado por Completo (${formatQuantity(currentData.quantity)} ${currentData.unit})`);
               } else {
                 const isFractioned = newQuantity < 1;
                 const updateData = { quantity: newQuantity, isFractioned };
@@ -128,8 +128,17 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                   }
                 }
                 await updateDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
-                usedIngredientsReport.push(`${ing.name}: ${quantityUsed} ${ing.usedUnit} usadas`);
+                const singularMap = { Piezas: 'Pieza', Kilogramos: 'Kilogramo', Gramos: 'Gramo', Litros: 'Litro', Mililitros: 'Mililitro' };
+                const displayUnit = quantityUsed === 1 ? (singularMap[ing.usedUnit] || ing.usedUnit) : ing.usedUnit;
+                const usedWord = ing.usedUnit === 'Piezas' ? (quantityUsed === 1 ? 'usada' : 'usadas') : (quantityUsed === 1 ? 'usado' : 'usados');
+                usedIngredientsReport.push(`${ing.name}: ${quantityUsed} ${displayUnit} ${usedWord}`);
               }
+            }
+          }
+
+          if (recipe.usedPendingDishNames && recipe.usedPendingDishNames.length > 0) {
+            for (const dishName of recipe.usedPendingDishNames) {
+              usedIngredientsReport.push(`⏰ ${dishName}: 1 platillo usado como complemento`);
             }
           }
 
@@ -140,17 +149,38 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             completedAt: new Date().toISOString(), favorite: false
           });
 
-          const reportMessage = usedIngredientsReport.length > 0 ? (
-            <div><p className="font-semibold mb-2">Inventario Actualizado:</p><ul className="text-left space-y-1">
-              {usedIngredientsReport.map((report, idx) => <li key={idx} className="text-sm">• {report}</li>)}
-            </ul></div>
-          ) : 'Receta Completada Exitosamente';
+          // Auto-eliminar platillos pendientes que se usaron como complemento
+          if (recipe.usedPendingDishIds && recipe.usedPendingDishIds.length > 0) {
+            for (const dishId of recipe.usedPendingDishIds) {
+              try {
+                await deleteDoc(doc(db, `users/${userId}/pendingDishes`, dishId));
+              } catch (e) {
+                console.error('Error al eliminar platillo pendiente:', e);
+              }
+            }
+          }
 
-          showModal('success', '¡Receta Completada! 🎉', reportMessage, () => setCurrentView('menu'));
+          const reportMessage = usedIngredientsReport.length > 0 ? (
+            <div>
+              <p className="font-bold text-food-700 mb-3">Inventario Actualizado:</p>
+              <ul className="space-y-2">
+                {usedIngredientsReport.map((report, idx) => (
+                  <li key={idx} className="flex items-start gap-2 bg-food-50 rounded-lg px-3 py-2 border border-food-100">
+                    <span className="text-food-500 font-bold mt-0.5 flex-shrink-0">✓</span>
+                    <span className="text-sm text-gray-700">{report}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-fresh-700 font-medium text-center py-2">¡Receta completada con éxito!</p>
+          );
+
+          showModal('success', '¡Receta Completada!', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
           console.error('Error al Completar Receta:', error);
           showModal('error', 'Error', `Error al Guardar: ${error.message}`);
-        } finally { setSaving(false); }
+        } finally { setSavingAction(null); }
       }
     );
   };
@@ -161,7 +191,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
       'Guardar como Pendiente',
       '¿Desea guardar este platillo como pendiente? Se actualizará su Inventario y podrá terminarlo después.',
       async () => {
-        setSaving(true);
+        setSavingAction('pending');
         try {
           const ingredientsSnapshot = await getDocs(collection(db, `users/${userId}/ingredients`));
           const usedIngredientsReport = [];
@@ -171,11 +201,11 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
-              const quantityUsed = parsedQty.type === 'number' ? parsedQty.number : 0;
-              const newQuantity = currentData.quantity - quantityUsed;
+              const quantityUsed = Math.round((parsedQty.type === 'number' ? parsedQty.number : 0) * 100) / 100;
+              const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
               if (newQuantity <= 0) {
                 await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
-                usedIngredientsReport.push(`${ing.name}: Usadas por completo 🥳 (Se acabó)`);
+                usedIngredientsReport.push(`${ing.name}: Inventario Utilizado por Completo (${formatQuantity(currentData.quantity)} ${currentData.unit})`);
               } else {
                 const isFractioned = newQuantity < 1;
                 const updateData = { quantity: newQuantity, isFractioned };
@@ -190,8 +220,17 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                   }
                 }
                 await updateDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
-                usedIngredientsReport.push(`${ing.name}: ${quantityUsed} ${ing.usedUnit} usadas`);
+                const singularMap = { Piezas: 'Pieza', Kilogramos: 'Kilogramo', Gramos: 'Gramo', Litros: 'Litro', Mililitros: 'Mililitro' };
+                const displayUnit = quantityUsed === 1 ? (singularMap[ing.usedUnit] || ing.usedUnit) : ing.usedUnit;
+                const usedWord = ing.usedUnit === 'Piezas' ? (quantityUsed === 1 ? 'usada' : 'usadas') : (quantityUsed === 1 ? 'usado' : 'usados');
+                usedIngredientsReport.push(`${ing.name}: ${quantityUsed} ${displayUnit} ${usedWord}`);
               }
+            }
+          }
+
+          if (recipe.usedPendingDishNames && recipe.usedPendingDishNames.length > 0) {
+            for (const dishName of recipe.usedPendingDishNames) {
+              usedIngredientsReport.push(`⏰ ${dishName}: 1 platillo usado como complemento`);
             }
           }
 
@@ -209,17 +248,45 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             completedAt: new Date().toISOString(), favorite: false
           });
 
-          const reportMessage = usedIngredientsReport.length > 0 ? (
-            <div><p className="font-semibold mb-2">Inventario Actualizado:</p><ul className="text-left space-y-1 mb-3">
-              {usedIngredientsReport.map((report, idx) => <li key={idx} className="text-sm">• {report}</li>)}
-            </ul><p className="text-sm mt-3 pt-3 border-t border-gray-200">Se conservará por aproximadamente {daysRemaining} días.</p></div>
-          ) : `Se conservará por aproximadamente ${daysRemaining} días.`;
+          // Auto-eliminar platillos pendientes que se usaron como complemento
+          if (recipe.usedPendingDishIds && recipe.usedPendingDishIds.length > 0) {
+            for (const dishId of recipe.usedPendingDishIds) {
+              try {
+                await deleteDoc(doc(db, `users/${userId}/pendingDishes`, dishId));
+              } catch (e) {
+                console.error('Error al eliminar platillo pendiente:', e);
+              }
+            }
+          }
 
-          showModal('success', '¡Platillo Guardado! 📦', reportMessage, () => setCurrentView('menu'));
+          const reportMessage = usedIngredientsReport.length > 0 ? (
+            <div>
+              <p className="font-bold text-food-700 mb-3">Inventario Actualizado:</p>
+              <ul className="space-y-2 mb-3">
+                {usedIngredientsReport.map((report, idx) => (
+                  <li key={idx} className="flex items-start gap-2 bg-food-50 rounded-lg px-3 py-2 border border-food-100">
+                    <span className="text-food-500 font-bold mt-0.5 flex-shrink-0">✓</span>
+                    <span className="text-sm text-gray-700">{report}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-2 bg-fresh-50 border border-fresh-200 rounded-xl px-4 py-3">
+                <span className="text-xl"></span>
+                <p className="text-sm text-fresh-700 font-medium">Se conservará por aproximadamente <strong>{daysRemaining} días</strong>.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-fresh-50 border border-fresh-200 rounded-xl px-4 py-3">
+              <span className="text-xl"></span>
+              <p className="text-sm text-fresh-700 font-medium">Se conservará por aproximadamente <strong>{daysRemaining} días</strong>.</p>
+            </div>
+          );
+
+          showModal('pending', '¡Platillo Guardado!', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
           console.error('Error al Guardar Platillo:', error);
           showModal('error', 'Error', `Error al Guardar: ${error.message}`);
-        } finally { setSaving(false); }
+        } finally { setSavingAction(null); }
       }
     );
   };
@@ -234,19 +301,19 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         <button onClick={() => setCurrentView('recipe-results')} className="mb-6 flex items-center gap-2 text-food-600 font-semibold hover:text-food-700 transition hover:scale-105">
           ← Volver a Resultados
         </button>
-        
+
         <div className="card-food rounded-2xl p-8">
           <div className="text-center mb-6">
             <div className="inline-block text-5xl mb-3 animate-bounce">🍳</div>
             <h2 className="text-3xl font-bold text-gray-800 mb-4 font-cooking">{recipe.name || 'Receta sin nombre'}</h2>
           </div>
-          
+
           <div className="flex flex-wrap gap-2 justify-center mb-6">
             {Array.isArray(recipe.categories) && recipe.categories.map((cat, idx) => (
               <span key={idx} className="bg-food-100 text-food-700 px-4 py-2 rounded-full text-sm font-bold">{cat}</span>
             ))}
           </div>
-          
+
           <div className="mb-8">
             <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
               <span className="text-2xl">🥗</span> Ingredientes de tu Inventario
@@ -256,8 +323,31 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
               {usedIngredients
               .map((ing, originalIndex) => ({ ...ing, originalIndex }))
               .filter(ing => ing.unit !== 'porción')
-              .map((ing) => (
-                <div key={ing.originalIndex} className={`border-2 rounded-xl p-4 transition-all ${ing.used ? 'border-food-200 bg-white shadow-md' : 'border-gray-200 bg-gray-50'}`}>
+              .map((ing) => {
+                const isPendingDish = ing.unit === 'platillo';
+                return (
+                <div key={ing.originalIndex} className={`border-2 rounded-xl p-4 transition-all ${
+                  isPendingDish
+                    ? 'border-orange-300 bg-orange-50 shadow-md'
+                    : ing.used ? 'border-food-200 bg-white shadow-md' : 'border-gray-200 bg-gray-50'
+                }`}>
+                  {isPendingDish ? (
+                    /* Platillo pendiente: no editable, muestra badge especial */
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">⏰</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-lg text-orange-800">{ing.name}</p>
+                          <span className="bg-orange-200 text-orange-800 text-xs font-bold px-2 py-0.5 rounded-full">Platillo pendiente</span>
+                        </div>
+                        <p className="text-sm text-orange-600 mt-1">Usado como complemento de esta receta</p>
+                      </div>
+                      <div className="text-right bg-orange-100 px-3 py-2 rounded-lg border border-orange-200">
+                        <p className="text-xs text-orange-600 font-medium">Cantidad</p>
+                        <p className="text-sm text-orange-800 font-bold">1 platillo</p>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="flex items-start gap-3">
                     <div onClick={() => toggleIngredient(ing.originalIndex)} className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${ing.used ? 'border-food-500 bg-food-500' : 'border-gray-300 hover:border-food-300'}`}>
                       {ing.used && <Check size={16} className="text-white" />}
@@ -276,13 +366,15 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                       <p className="text-sm text-food-700 font-bold">{formatQuantity(ing.quantity, 2)} {ing.unit || ''}</p>
                     </div>
                   </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
-          
+
           {missingIngredientsSection(recipe.missingIngredients)}
-          
+
           <div className="mb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span className="text-2xl">📝</span> Instrucciones de Preparación</h3>
             <div className="bg-white/60 rounded-xl p-4 border-2 border-food-100">
@@ -293,17 +385,37 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
               </ol>
             </div>
           </div>
-          
+
           {recipe.prepTime && (
             <div className="bg-gradient-to-r from-food-50 to-teal-50 border-2 border-food-200 rounded-xl p-4 mb-6 flex items-center gap-3">
               <div className="w-12 h-12 bg-food-500 rounded-xl flex items-center justify-center"><Clock className="text-white" size={24} /></div>
               <div><p className="text-sm text-food-600 font-medium">Tiempo de Preparación</p><p className="text-2xl font-bold text-food-800">{recipe.prepTime} <span className="text-base font-normal">minutos</span></p></div>
             </div>
           )}
-          
+
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={handleMarkAsCompleted} disabled={saving} className="btn-food flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"><Check size={20} />{saving ? 'Guardando...' : 'Marcar como Terminada'}</button>
-            <button onClick={handleSaveAsPending} disabled={saving} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"><BookOpen size={20} />{saving ? 'Guardando...' : 'Guardar como Pendiente'}</button>
+            <button
+              onClick={handleMarkAsCompleted}
+              disabled={savingAction !== null}
+              className="btn-food flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {savingAction === 'complete' ? (
+                <><div className="animate-spin rounded-full h-5 w-5 border-2 border-food-600 border-t-transparent"></div>Guardando...</>
+              ) : (
+                <><Check size={20} />Marcar como Terminada</>
+              )}
+            </button>
+            <button
+              onClick={handleSaveAsPending}
+              disabled={savingAction !== null}
+              className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {savingAction === 'pending' ? (
+                <><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>Guardando...</>
+              ) : (
+                <><BookOpen size={20} />Guardar como Pendiente</>
+              )}
+            </button>
           </div>
         </div>
       </div>

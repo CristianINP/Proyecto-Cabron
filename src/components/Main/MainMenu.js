@@ -1,14 +1,6 @@
 // src/components/Main/MainMenu.js
 import React from 'react';
-import { LogOut } from 'lucide-react';
-
-// Emojis de comida para los botones
-const FOOD_ICONS = {
-  register: '🥬',
-  inventory: '📦',
-  recipes: '🍳',
-  stored: '⏰'
-};
+import { LogOut, ChefHat, ShoppingBasket, Package, Clock } from 'lucide-react';
 
 const MainMenu = ({ setCurrentView, onLogout }) => {
   return (
@@ -38,14 +30,31 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Generar Recetas con IA — featured button, full width */}
+          <button
+            onClick={() => setCurrentView('generate-recipe')}
+            className="md:col-span-2 bg-gradient-to-br from-food-50 via-cream-50 to-food-100 border-2 border-food-200 rounded-2xl shadow-lg p-10 hover:scale-[1.02] transition-all duration-300 group relative overflow-hidden">
+            {/* Efecto de hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-food-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+            <div className="bg-food-200 w-24 h-24 rounded-full flex items-center justify-center mb-4 group-hover:bg-food-300 transition-all duration-300 group-hover:scale-110 mx-auto relative">
+              <ChefHat size={48} className="text-food-700" />
+            </div>
+            <div className="flex items-center justify-center mb-2">
+              <h3 className="text-2xl font-bold text-gray-800 text-center">Generar Recetas con IA</h3>
+            </div>
+            <p className="text-food-600 text-center text-base">Crea recetas con tus ingredientes</p>
+            <div className="absolute -bottom-2 -right-2 text-3xl opacity-40">🍳</div>
+          </button>
+
           <button
             onClick={() => setCurrentView('register-ingredient')}
             className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden">
             {/* Efecto de hover */}
             <div className="absolute inset-0 bg-gradient-to-r from-food-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
+
             <div className="bg-food-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-food-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
-              <span className="text-4xl">{FOOD_ICONS.register}</span>
+              <ShoppingBasket size={38} className="text-food-700" />
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Registrar Ingredientes</h3>
             <p className="text-gray-600 text-center">Añade nuevos alimentos a tu despensa</p>
@@ -57,9 +66,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
             className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden">
             {/* Efecto de hover */}
             <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
+
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
-              <span className="text-4xl">{FOOD_ICONS.inventory}</span>
+              <Package size={38} className="text-fresh-700" />
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Gestionar Inventario</h3>
             <p className="text-gray-600 text-center">Consulta y Organiza tus ingredientes</p>
@@ -67,27 +76,13 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
           </button>
 
           <button
-            onClick={() => setCurrentView('generate-recipe')}
-            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden">
-            {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
-            <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
-              <span className="text-4xl">{FOOD_ICONS.recipes}</span>
-            </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Generar Recetas con IA</h3>
-            <p className="text-gray-500 text-center text-sm">Crea recetas con tus ingredientes</p>
-            <div className="absolute -bottom-2 -right-2 text-2xl opacity-30">🍳</div>
-          </button>
-
-          <button
             onClick={() => setCurrentView('pending-dishes')}
             className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden">
             {/* Efecto de hover */}
             <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            
+
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
-              <span className="text-4xl">{FOOD_ICONS.recipes}</span>
+              <Clock size={38} className="text-fresh-700" />
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Platillos Almacenados</h3>
             <p className="text-gray-500 text-center text-sm">Revisa tus recetas sin terminar</p>

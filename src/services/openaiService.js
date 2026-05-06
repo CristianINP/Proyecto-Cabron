@@ -26,7 +26,7 @@ const sanitizeJsonString = (dirtyJson) => {
 
   // Reemplazar comillas tipográficas por comillas rectas dobles
   cleaned = cleaned.replace(/[“”]/g, '"');
-  
+
   // Reemplazar apóstrofos tipográficos por comillas simples rectas
   cleaned = cleaned.replace(/[‘’]/g, "'");
 
@@ -52,7 +52,7 @@ const safeParseJsonFromResponse = (rawContent) => {
 
   // Buscar bloque JSON desde el primer { hasta el último } balanceado
   const jsonMatch = sanitized.match(/\{[\s\S]*\}/);
-  
+
   if (!jsonMatch) {
     console.error('No se encontró bloque JSON en:', sanitized);
     throw new Error('No se encontró un JSON válido en la respuesta.');
@@ -128,6 +128,7 @@ const jsonSchema = {
 
 export const generateRecipe = async ({
   ingredients,
+  pendingDishes = [],
   categories,
   mealTime,
   servings,
@@ -136,15 +137,37 @@ export const generateRecipe = async ({
   usedRecipeNames = []
 }) => {
   try {
-    const ingredientsList = ingredients.map(ing => 
+    const ingredientsList = ingredients.map(ing =>
       `${ing.name} (${ing.quantity} ${ing.unit})`
     ).join(', ');
 
-    const categoriesText = categories.length > 0 
-      ? `Categorías: ${categories.join(', ')}` 
+    let pendingDishesText = '';
+    if (pendingDishes.length > 0) {
+      const dishDescriptions = pendingDishes.map(dish => {
+        const ingList = dish.ingredients && dish.ingredients.length > 0
+          ? ` — contiene: ${dish.ingredients.map(i => `${i.name} (${i.quantity} ${i.unit})`).join(', ')}`
+          : '';
+        return `  • "${dish.name}"${ingList} (caduca en ${dish.daysRemaining} días)`;
+      }).join('\n');
+
+      pendingDishesText = `
+
+⚠️ PLATILLOS PENDIENTES — USO OBLIGATORIO (${pendingDishes.length} platillo${pendingDishes.length > 1 ? 's' : ''}):
+${dishDescriptions}
+
+INSTRUCCIONES ESTRICTAS PARA LOS PLATILLOS PENDIENTES:
+1. DEBES crear una receta NUEVA y DIFERENTE que use TODOS los platillos pendientes listados arriba como ingredientes complementarios (por ejemplo: usarlos como relleno, base de sopa, acompañamiento, mezclados con otros ingredientes, etc.).
+2. La receta generada NO puede ser igual a ninguno de los platillos pendientes; debe ser una preparación distinta.
+3. CADA platillo pendiente debe aparecer como una entrada SEPARADA en el array "ingredients" con quantity "1" y unit "platillo" — uno por platillo. Si hay ${pendingDishes.length} platillos pendientes, deben aparecer ${pendingDishes.length} entradas con unit "platillo".
+4. Los ingredientes de CADA platillo pendiente listados arriba son SOLO referencia interna; NO los listes individualmente en "ingredients". Usa el nombre completo de cada platillo como una unidad entera.
+5. ESTÁ PROHIBIDO mezclar los ingredientes individuales de un platillo pendiente con los ingredientes del inventario; cada platillo pendiente va como unidad completa.`;
+    }
+
+    const categoriesText = categories.length > 0
+      ? `Categorías: ${categories.join(', ')}`
       : '';
-    
-    const regenerateText = regenerate 
+
+    const regenerateText = regenerate
       ? '\n\n⚠️ IMPORTANTE: Genera una receta COMPLETAMENTE DIFERENTE a la anterior. Usa diferentes técnicas, sabores y combinaciones.'
       : '';
     const usedNamesText = usedRecipeNames.length > 0
@@ -152,6 +175,7 @@ export const generateRecipe = async ({
       : '';
 
     const prompt = `Eres un chef experto. Genera 1 receta usando estos ingredientes DISPONIBLES EN EL INVENTARIO: ${ingredientsList}.
+${pendingDishesText}
 
     ${categoriesText}
     Horario: ${mealTime}
@@ -166,9 +190,9 @@ export const generateRecipe = async ({
     3. Solo genera la receta si todos los ingredientes disponibles son compatibles con todas las categorías seleccionadas.
 
     SEPARACIÓN DE INGREDIENTES (MUY IMPORTANTE):
-    - En "ingredients": SOLO incluye los ingredientes que están en la lista de DISPONIBLES arriba.
-    - En "missingIngredients": incluye CUALQUIER ingrediente que necesites pero NO esté en la lista de disponibles (sal, aceite, harina, azúcar, especias, condimentos, miel, etc.) y que cada ingrediente empiece con MAYÚSCULA.
-    - Si un ingrediente NO está en la lista de disponibles, DEBE ir en "missingIngredients", sin excepción.
+    - En "ingredients": incluye los ingredientes de la lista DISPONIBLES arriba MÁS cualquier platillo pendiente que estés usando (con unit "platillo").
+    - En "missingIngredients": incluye CUALQUIER ingrediente adicional que necesites pero NO esté en la lista de disponibles ni sea un platillo pendiente (sal, aceite, harina, azúcar, especias, condimentos, miel, etc.) y que cada ingrediente empiece con MAYÚSCULA.
+    - Si un ingrediente NO está en la lista de disponibles ni es un platillo pendiente, DEBE ir en "missingIngredients", sin excepción.
 
     FORMATO DE CANTIDADES (MUY IMPORTANTE):
     - Para cualquier vegetal, proteína, lácteo, cereal, fruta o ingrediente principal: USA SIEMPRE un número concreto como cantidad (ejemplos: 100, 200, 2, 0.5). NUNCA uses "Suficiente", "Cantidad necesaria", "Lo necesario" ni ninguna variante vaga para estos ingredientes.
@@ -229,7 +253,7 @@ export const generateRecipe = async ({
           { role: 'user', content: prompt }
         ],
         // Forzar formato JSON válido (soportado por GPT-4o-mini)
-        response_format: { 
+        response_format: {
           type: "json_schema",
           json_schema: jsonSchema
         },

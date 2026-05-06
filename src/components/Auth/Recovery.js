@@ -25,7 +25,7 @@ const Recovery = ({ setCurrentView }) => {
 
     // Validar campo vacío
     if (!email) {
-      setError('Por favor ingrese su Correo Electrónico');
+      setError('Por favor ingrese su Correo electrónico');
       setLoading(false);
       return;
     }
@@ -33,7 +33,7 @@ const Recovery = ({ setCurrentView }) => {
     // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Formato de Correo Electrónico Inválido');
+      setError('Formato de Correo electrónico Inválido');
       setLoading(false);
       return;
     }
@@ -48,10 +48,10 @@ const Recovery = ({ setCurrentView }) => {
       
       switch (error.code) {
         case 'auth/user-not-found':
-          setError('No existe una Cuenta asociada a este Correo Electrónico');
+          setError('No existe una Cuenta asociada a este Correo electrónico');
           break;
         case 'auth/invalid-email':
-          setError('Correo Electrónico Inválido');
+          setError('Correo electrónico Inválido');
           break;
         case 'auth/too-many-requests':
           setError('Demasiados Intentos. Intente más tarde');
@@ -63,6 +63,18 @@ const Recovery = ({ setCurrentView }) => {
       setLoading(false);
     }
   };
+
+  if (loading) return (
+    <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-10 left-10 text-4xl opacity-20 animate-pulse">🥕</div>
+      <div className="absolute top-20 right-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '0.5s' }}>🍅</div>
+      <div className="absolute bottom-20 left-20 text-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}>🥦</div>
+      <div className="text-center relative z-10">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-food-200 border-t-food-500 mx-auto mb-4"></div>
+        <p className="text-food-600 font-semibold">Enviando Correo...</p>
+      </div>
+    </div>
+  );
 
   // Generar posiciones aleatorias para los emojis
   const decorationElements = FOOD_DECORATIONS.slice(0, 15).map((emoji, index) => ({
@@ -104,7 +116,7 @@ const Recovery = ({ setCurrentView }) => {
             <form onSubmit={handleRecovery} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-cream-800 mb-2">
-                  📧 Correo Electrónico
+                  📧 Correo electrónico
                 </label>
                 <input 
                   type="email"
@@ -134,8 +146,7 @@ const Recovery = ({ setCurrentView }) => {
                     Enviando...
                   </>
                 ) : (
-                  <>
-                    📧 Enviar Enlace de Recuperación
+                  <>Enviar Enlace de Recuperación
                   </>
                 )}
               </button>
@@ -182,7 +193,7 @@ const Recovery = ({ setCurrentView }) => {
               {/* Nota informativa */}
               <div className="bg-food-50 border-2 border-food-200 rounded-xl p-3 mb-6">
                 <p className="text-sm text-food-800">
-                  <strong>💡 Nota:</strong> El correo de recuperación se enviará siempre y cuando la dirección de correo electrónico ingresada se encuentre registrada en nuestro sistema.
+                  <strong>💡 Nota:</strong> El correo de recuperación se enviará siempre y cuando la dirección de Correo electrónico ingresada se encuentre registrada en nuestro sistema.
                 </p>
               </div>
               
