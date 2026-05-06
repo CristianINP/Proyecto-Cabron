@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../services/firebase';
+import { Link } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -116,7 +117,7 @@ const Recovery = ({ setCurrentView }) => {
             <form onSubmit={handleRecovery} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-cream-800 mb-2">
-                  📧 Correo electrónico
+                  Correo electrónico
                 </label>
                 <input 
                   type="email"
@@ -146,7 +147,9 @@ const Recovery = ({ setCurrentView }) => {
                     Enviando...
                   </>
                 ) : (
-                  <>Enviar Enlace de Recuperación
+                  <>
+                   <Link size={18} />
+                  Enviar Enlace de Recuperación
                   </>
                 )}
               </button>

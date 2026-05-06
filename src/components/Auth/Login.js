@@ -121,7 +121,7 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo electrónico
+              Correo electrónico
             </label>
             <input 
               type="email" 
@@ -135,7 +135,7 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🔐 Contraseña
+              Contraseña
             </label>
             <input 
               type="password"
@@ -188,7 +188,7 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
               onClick={() => setCurrentView('register')}
               className="text-food-600 font-bold hover:text-food-700 transition hover:scale-105 inline-block"
             >
-              Regístrate 🍎
+              Regístrate
             </button>
           </div>
         </form>

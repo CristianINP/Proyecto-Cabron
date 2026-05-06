@@ -173,7 +173,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              👤 Nombre de Usuario
+              Nombre de Usuario
             </label>
             <input 
               type="text"
@@ -188,7 +188,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              📧 Correo electrónico
+              Correo electrónico
             </label>
             <input 
               type="email"
@@ -203,7 +203,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🔐 Contraseña
+              Contraseña
             </label>
             <input 
               type="password"
@@ -221,7 +221,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🔐 Confirmar Contraseña
+              Confirmar Contraseña
             </label>
             <input 
               type="password"
@@ -236,7 +236,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
           
           <div>
             <label className="block text-sm font-bold text-cream-800 mb-2">
-              🎂 Fecha de Nacimiento
+              Fecha de Nacimiento
             </label>
             <input 
               type="date"
