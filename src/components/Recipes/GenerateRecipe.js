@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { Search, ChefHat, AlertTriangle } from 'lucide-react';
+import { Search, ChefHat, AlertTriangle, Plus } from 'lucide-react';
 import { isPriority, isExpired, getDaysRemaining } from '../../utils/dateCalculations';
 import { generateRecipe } from '../../services/openaiService';
 import { formatQuantity } from '../../utils/recipeHelpers';
@@ -204,7 +204,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
           ← Volver al Menú
         </button>
 
-        <div className="card-food rounded-2xl p-8">
+        <div className="card-food rounded-2xl p-8 border-2 border-food-600">
           <div className="flex items-center gap-4 mb-6">
             <span className="text-4xl">🍳</span>
             <h2 className="text-3xl font-bold text-gray-800 font-cooking">Generar Recetas con IA</h2>
@@ -346,7 +346,7 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
               <div className="text-6xl mb-4">🥬</div>
               <p className="text-gray-600 mb-2 text-lg font-medium">No tienes ingredientes disponibles</p>
               <button onClick={() => setCurrentView('register-ingredient')} className="btn-food">
-                🥗 Registrar ingredientes
+                <Plus size={18} /> Registrar ingredientes
               </button>
             </div>
           )}

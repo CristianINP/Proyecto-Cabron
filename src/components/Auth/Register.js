@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
 import Modal from '../../utils/Modal';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Eye, EyeOff } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -14,7 +14,7 @@ const FOOD_DECORATIONS = [
   '🍌', '🍊', '🍋', '🍇', '🍓', '🥝', '🍑', '🍐', '🥜', '🫘'
 ];
 
-const Register = ({ setCurrentView, onRegistrationComplete }) => {
+const Register = ({ setCurrentView, onRegistrationComplete, onRegistrationReset }) => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -24,6 +24,8 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     isOpen: false, type: 'success', title: '', message: '', onConfirm: () => {}
   });
@@ -38,7 +40,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
   const showModal = (type, title, message, onConfirm = () => {}) => {
     setModalConfig({ isOpen: true, type, title, message, onConfirm });
   };
-  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
+  const closeModal = () => { onRegistrationReset?.(); setModalConfig(prev => ({ ...prev, isOpen: false })); };
 
   const validateForm = () => {
     // Validar campos vacíos
@@ -96,16 +98,21 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
       });
 
       // Crear documento del usuario en Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        username: formData.username,
-        email: formData.email,
-        birthdate: formData.birthdate,
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          username: formData.username,
+          email: formData.email,
+          birthdate: formData.birthdate,
+          createdAt: new Date().toISOString()
+        });
+      } catch (firestoreError) {
+        await user.delete();
+        throw firestoreError;
+      }
 
       // Bloquear redirección automática y mostrar modal de éxito
       onRegistrationComplete?.();
-      showModal('success', '¡Cuenta Creada! 🎉', '¡Tu cuenta ha sido creada exitosamente! Ya puedes comenzar a gestionar tus alimentos. 🥗', () => setCurrentView('menu'));
+      showModal('welcome', 'Cuenta creada', 'Tu cuenta ha sido creada exitosamente. Bienvenido a Ready to Cook.', () => setCurrentView('menu'));
     } catch (error) {
       console.error('Error al Registrar:', error);
       
@@ -163,7 +170,7 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
         </div>
       ))}
 
-      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10">
+      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10 border-2 border-food-600">
         <div className="text-center mb-6">
           <div className="text-5xl mb-3 animate-bounce">🍳</div>
           <h2 className="text-2xl font-bold text-food-800 font-cooking">Crear Cuenta</h2>
@@ -205,15 +212,26 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
             <label className="block text-sm font-bold text-cream-800 mb-2">
               Contraseña
             </label>
-            <input 
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="input-food"
-              placeholder="Mínimo 8 caracteres"
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="input-food pr-12"
+                placeholder="Mínimo 8 caracteres"
+                disabled={loading}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-cream-600 hover:text-food-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             <p className="text-xs text-cream-600 mt-1">
               💡 Mínimo 8 caracteres, una mayúscula y un número
             </p>
@@ -223,15 +241,26 @@ const Register = ({ setCurrentView, onRegistrationComplete }) => {
             <label className="block text-sm font-bold text-cream-800 mb-2">
               Confirmar Contraseña
             </label>
-            <input 
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="input-food"
-              placeholder="Repite tu contraseña"
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="input-food pr-12"
+                placeholder="Repite tu contraseña"
+                disabled={loading}
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-cream-600 hover:text-food-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           
           <div>

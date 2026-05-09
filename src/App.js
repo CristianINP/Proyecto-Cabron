@@ -59,6 +59,8 @@ function App() {
   const handleLogout = async () => {
     try {
       await auth.signOut();
+      loginInProgress.current = false;
+      registrationInProgress.current = false;
       setCurrentView('login');
       setUser(null);
     } catch (error) {
@@ -86,10 +88,10 @@ function App() {
   const renderView = () => {
     switch (currentView) {
       case 'login':
-        return <Login setCurrentView={setCurrentView} onLoginComplete={() => { loginInProgress.current = true; }} />;
+        return <Login setCurrentView={setCurrentView} onLoginComplete={() => { loginInProgress.current = true; }} onLoginReset={() => { loginInProgress.current = false; }} />;
 
       case 'register':
-        return <Register setCurrentView={setCurrentView} onRegistrationComplete={() => { registrationInProgress.current = true; }} />;
+        return <Register setCurrentView={setCurrentView} onRegistrationComplete={() => { registrationInProgress.current = true; }} onRegistrationReset={() => { registrationInProgress.current = false; }} />;
 
       case 'recovery':
         return <Recovery setCurrentView={setCurrentView} />;

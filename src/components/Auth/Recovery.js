@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../services/firebase';
-import { Link } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -101,7 +101,7 @@ const Recovery = ({ setCurrentView }) => {
         </div>
       ))}
 
-      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10">
+      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10 border-2 border-food-600">
         
         {!success ? (
           <>
@@ -148,7 +148,7 @@ const Recovery = ({ setCurrentView }) => {
                   </>
                 ) : (
                   <>
-                   <Link size={18} />
+                   <Mail size={20} />
                   Enviar Enlace de Recuperación
                   </>
                 )}

@@ -1,6 +1,6 @@
 // src/components/Common/Modal.js
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, CheckCircle } from 'lucide-react';
 
 const TYPE_CONFIG = {
   confirm: {
@@ -48,6 +48,15 @@ const TYPE_CONFIG = {
     confirmBtn: 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-orange',
     cancelBtn: '',
   },
+  welcome: {
+    icon: null,
+    animation: '',
+    headerGradient: 'from-food-50 to-food-100',
+    headerBorder: 'border-food-200',
+    titleColor: 'text-food-800',
+    confirmBtn: 'bg-gradient-to-r from-food-500 to-food-600 hover:from-food-600 hover:to-food-700',
+    cancelBtn: '',
+  },
 };
 
 const Modal = ({
@@ -86,15 +95,19 @@ const Modal = ({
         <div className={`bg-gradient-to-r ${cfg.headerGradient} border-b-2 ${cfg.headerBorder} px-6 pt-6 pb-5`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-4">
-              {/* Emoji interactivo: animado en reposo, "pop" al hacer hover */}
-              <span
-                className={`text-5xl select-none cursor-default inline-block transition-transform duration-150
-                  ${emojiPopped ? 'scale-150' : cfg.animation}`}
-                onMouseEnter={() => setEmojiPopped(true)}
-                onMouseLeave={() => setEmojiPopped(false)}
-              >
-                {cfg.emoji}
-              </span>
+              {type === 'welcome' ? (
+                <CheckCircle size={28} className="text-food-600 flex-shrink-0" />
+              ) : (
+                /* Emoji interactivo: animado en reposo, "pop" al hacer hover */
+                <span
+                  className={`text-5xl select-none cursor-default inline-block transition-transform duration-150
+                    ${emojiPopped ? 'scale-150' : cfg.animation}`}
+                  onMouseEnter={() => setEmojiPopped(true)}
+                  onMouseLeave={() => setEmojiPopped(false)}
+                >
+                  {cfg.emoji}
+                </span>
+              )}
               <h3 className={`text-xl font-bold ${cfg.titleColor} font-cooking leading-tight`}>
                 {title}
               </h3>

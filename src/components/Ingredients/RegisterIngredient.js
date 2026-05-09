@@ -8,6 +8,7 @@ import {
   addToPersonalFoodDatabase
 } from '../../services/foodDatabase';
 import { toISODateString, getTodayISO } from '../../utils/dateCalculations';
+import { Plus } from 'lucide-react';
 
 // 🔹 Normaliza fecha para evitar desfase por UTC (fija hora a 12:00 PM)
 const normalizeDateForFirestore = (isoDate) => {
@@ -174,7 +175,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
           ← Volver al Menú
         </button>
 
-        <div className="card-food rounded-2xl p-8">
+        <div className="card-food rounded-2xl p-8 border-2 border-food-600">
           <div className="flex items-center gap-4 mb-6">
             <span className="text-4xl animate-bounce">🥬</span>
             <h2 className="text-3xl font-bold text-gray-800 font-cooking">Registrar Ingrediente</h2>
@@ -233,7 +234,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
                 <input
                   type="number"
                   step="0.1"
-                  min="0.1"
+                  min="0.25"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   className="input-food"
@@ -338,7 +339,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
                 </>
               ) : (
                 <>
-                  🥗 Registrar Ingrediente
+                  <Plus size={20} /> Registrar Ingrediente
                 </>
               )}
             </button>

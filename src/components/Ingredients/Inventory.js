@@ -146,7 +146,7 @@ const Inventory = ({ setCurrentView, userId }) => {
   const startEdit = (ingredient) => {
     setEditingId(ingredient.id);
     setEditForm({
-      quantity: ingredient.quantity.toFixed(2), // Formatear a 2 decimales
+      quantity: parseFloat(ingredient.quantity).toFixed(2), // Formatear a 2 decimales
       unit: ingredient.unit,
       expirationDate: ingredient.expirationDate,
       purchaseDate: ingredient.purchaseDate,
@@ -159,15 +159,20 @@ const Inventory = ({ setCurrentView, userId }) => {
     setEditForm({});
   };
 
+  const normalizeDateForFirestore = (isoDate) => {
+    const [year, month, day] = isoDate.split('-');
+    return new Date(year, month - 1, day, 12).toISOString();
+  };
+
   const saveEdit = (id) => {
     const newQuantity = parseFloat(editForm.quantity);
 
     // 🚨 VALIDACIÓN ANTES DEL MODAL
-    if (!newQuantity || newQuantity < 0.5) {
+    if (!newQuantity || newQuantity < 0.25) {
       showModal(
         'error',
         'Cantidad Inválida',
-        'La cantidad debe ser mayor o igual a 0.5'
+        'La cantidad debe ser mayor o igual a 0.25'
       );
       return;
     }
@@ -182,9 +187,23 @@ const Inventory = ({ setCurrentView, userId }) => {
           const ingredientRef = doc(db, `users/${userId}/ingredients`, id);
           const isFractioned = newQuantity < 1;
 
-          let newExpirationDate = editForm.expirationDate;
+          // Normalize the manually-entered date (YYYY-MM-DD) to a proper ISO
+          // string with a fixed noon time, matching RegisterIngredient.js behaviour.
+          // editForm.expirationDate may be a full ISO string (original value) or a
+          // plain YYYY-MM-DD string (set by the date <input> onChange).
+          const rawDate = editForm.expirationDate || '';
+          const dateOnly = rawDate.length > 10 ? rawDate.split('T')[0] : rawDate;
+          let newExpirationDate = dateOnly ? normalizeDateForFirestore(dateOnly) : rawDate;
 
-          if (editForm.unit === 'Piezas') {
+          // Auto-recalculate expiry only when the unit is 'Piezas' AND the user
+          // has NOT manually changed the date (i.e. the date input was not touched).
+          // We detect a manual change by comparing the stored dateOnly against what
+          // the original ingredient had; if they differ the user intentionally set a
+          // new date so we respect it.
+          const originalDateOnly = ingredients.find(ing => ing.id === id)?.expirationDate?.split('T')[0] || '';
+          const userChangedDate = dateOnly !== originalDateOnly;
+
+          if (editForm.unit === 'Piezas' && !userChangedDate) {
             const food = searchFood(editForm.name);
             if (food) {
               const purchaseDate = new Date(editForm.purchaseDate);
@@ -271,7 +290,7 @@ const Inventory = ({ setCurrentView, userId }) => {
           ← Volver al Menú
         </button>
 
-        <div className="card-food rounded-2xl p-8">
+        <div className="card-food rounded-2xl p-8 border-2 border-food-600">
           <div className="flex items-center gap-4 mb-6">
             <span className="text-4xl">📦</span>
             <h2 className="text-3xl font-bold text-gray-800 font-cooking">Mi Despensa</h2>

@@ -104,7 +104,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
 
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
-            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name.toLowerCase().trim() === ing.name.toLowerCase().trim());
+            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
@@ -197,7 +197,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           const usedIngredientsReport = [];
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
-            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name.toLowerCase().trim() === ing.name.toLowerCase().trim());
+            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);

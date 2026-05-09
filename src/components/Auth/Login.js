@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import Modal from '../../utils/Modal';
-import { LogIn } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 
 // Lista de emojis de comida para el fondo
 const FOOD_DECORATIONS = [
@@ -13,11 +13,12 @@ const FOOD_DECORATIONS = [
   '🍎', '🍌', '🍊', '🍋', '🍇', '🍓', '🫐', '🥝', '🍑', '🍐'
 ];
 
-const Login = ({ setCurrentView, onLoginComplete }) => {
+const Login = ({ setCurrentView, onLoginComplete, onLoginReset }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false, type: 'success', title: '', message: '', onConfirm: () => {}
@@ -25,7 +26,7 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
   const showModal = (type, title, message, onConfirm = () => {}) => {
     setModalConfig({ isOpen: true, type, title, message, onConfirm });
   };
-  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
+  const closeModal = () => { onLoginReset?.(); setModalConfig(prev => ({ ...prev, isOpen: false })); };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -45,9 +46,9 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
       const displayName = userCredential.user.displayName || email;
       onLoginComplete?.();
       showModal(
-        'success',
-        '¡Bienvenido! 👋',
-        `¡Hola, ${displayName}! Has iniciado sesión exitosamente. ¡Listo para cocinar! 🍳`,
+        'welcome',
+        'Sesión iniciada',
+        `Bienvenido, ${displayName}.`,
         () => setCurrentView('menu')
       );
     } catch (error) {
@@ -111,7 +112,7 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
         </div>
       ))}
 
-      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10">
+      <div className="card-food rounded-2xl p-8 w-full max-w-md relative z-10 border-2 border-food-600">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4 animate-bounce">🥗</div>
           <h1 className="text-3xl font-bold text-food-800 font-cooking">Ready to Cook</h1>
@@ -137,14 +138,25 @@ const Login = ({ setCurrentView, onLoginComplete }) => {
             <label className="block text-sm font-bold text-cream-800 mb-2">
               Contraseña
             </label>
-            <input 
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input-food" 
-              placeholder="Ingresa tu contraseña"
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="input-food pr-12"
+                placeholder="Ingresa tu contraseña"
+                disabled={loading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-cream-600 hover:text-food-600 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           
           {error && (

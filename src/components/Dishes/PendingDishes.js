@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { getDaysRemaining, isExpired } from '../../utils/dateCalculations';
-import { XCircle, ChevronDown, ChevronUp, Clock, CheckCircle} from 'lucide-react';
+import { XCircle, Clock, CheckCircle, BookOpen, ChefHat } from 'lucide-react';
 import Modal from '../../utils/Modal';
 
 const PendingDishes = ({ setCurrentView, userId }) => {
@@ -115,7 +115,7 @@ const PendingDishes = ({ setCurrentView, userId }) => {
           ← Volver al Menú
         </button>
 
-        <div className="card-food rounded-2xl p-8">
+        <div className="card-food rounded-2xl p-8 border-2 border-food-600">
           {/* Encabezado */}
           <div className="flex items-center gap-4 mb-6">
             <span className="text-4xl">⏰</span>
@@ -132,9 +132,9 @@ const PendingDishes = ({ setCurrentView, userId }) => {
               <p className="text-gray-500 text-sm mb-6">Guarda una receta como pendiente para verla aquí</p>
               <button
                 onClick={() => setCurrentView('generate-recipe')}
-                className="btn-food"
+                className="btn-food flex items-center justify-center gap-2"
               >
-                🥗 Generar una receta
+                <ChefHat size={18} /> Generar una receta
               </button>
             </div>
           ) : (
@@ -156,17 +156,10 @@ const PendingDishes = ({ setCurrentView, userId }) => {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        {/* Nombre (clickeable para expandir) */}
-                        <button
-                          onClick={() => toggleExpand(dish.id)}
-                          className="flex items-center gap-2 text-xl font-bold text-gray-800 hover:text-food-600 transition mb-1 text-left"
-                        >
+                        {/* Nombre */}
+                        <h3 className="text-xl font-bold text-gray-800 mb-1">
                           {dish.name}
-                          {isExpanded
-                            ? <ChevronUp size={20} className="text-food-500 flex-shrink-0" />
-                            : <ChevronDown size={20} className="text-food-400 flex-shrink-0" />
-                          }
-                        </button>
+                        </h3>
 
                         {isExpiringSoon && !dish.expired && (
                           <span className="badge-priority text-xs">⚠️ Próximo a caducar</span>
@@ -239,13 +232,22 @@ const PendingDishes = ({ setCurrentView, userId }) => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleComplete(dish.id, dish.name)}
-                      className="w-full btn-food py-3 flex items-center justify-center gap-2 font-bold"
-                    >
-                      <CheckCircle size={20} />
-                      Marcar como Terminado
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => toggleExpand(dish.id)}
+                        className="flex-1 btn-food py-3 flex items-center justify-center gap-2 font-bold"
+                      >
+                        <BookOpen size={18} />
+                        {isExpanded ? 'Ocultar receta' : 'Ver receta completa'}
+                      </button>
+                      <button
+                        onClick={() => handleComplete(dish.id, dish.name)}
+                        className="flex-1 btn-food py-3 flex items-center justify-center gap-2 font-bold"
+                      >
+                        <CheckCircle size={20} />
+                        Marcar como Terminado
+                      </button>
+                    </div>
                   </div>
                 );
               })}
