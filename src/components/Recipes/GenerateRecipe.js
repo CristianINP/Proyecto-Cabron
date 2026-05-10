@@ -344,9 +344,9 @@ const GenerateRecipe = ({ setCurrentView, userId, setGeneratedRecipes, setCurren
           {ingredients.length === 0 && pendingDishes.length === 0 && (
             <div className="text-center py-12 bg-white/60 rounded-2xl mb-6 border-2 border-dashed border-food-200">
               <div className="text-6xl mb-4">🥬</div>
-              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes ingredientes disponibles</p>
+              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes Ingredientes Disponibles</p>
               <button onClick={() => setCurrentView('register-ingredient')} className="btn-food">
-                <Plus size={18} /> Registrar ingredientes
+                Registrar Ingredientes
               </button>
             </div>
           )}

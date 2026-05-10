@@ -245,7 +245,7 @@ const Inventory = ({ setCurrentView, userId }) => {
 
           setEditingId(null);
           setEditForm({});
-          showModal('success', '¡Actualizado!', 'Ingrediente Actualizado Exitosamente');
+          showModal('success', '¡Actualizado!', 'Ingrediente actualizado exitosamente');
         } catch (error) {
           console.error('Error al actualizar:', error);
           showModal('error', 'Error', 'Error al Actualizar el Ingrediente');

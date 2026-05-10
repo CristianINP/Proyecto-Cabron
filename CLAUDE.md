@@ -27,7 +27,7 @@ There is no React Router. Navigation is view-based state in [src/App.js](src/App
 
 Recipe data (`generatedRecipes`, `selectedRecipe`, `currentRecipeIndex`) is lifted to App.js and passed as props — there is no Context or Redux.
 
-**Auth navigation guards**: App.js holds two refs — `registrationInProgress` and `loginInProgress` — that block `onAuthStateChanged` from automatically redirecting to `menu` while an auth flow is in progress. The auth callback navigates only after the flow's own modal/callback fires. Login and Register each receive two callbacks: `onLoginComplete`/`onRegistrationComplete` (sets ref to `true` before showing the success modal) and `onLoginReset`/`onRegistrationReset` (sets ref back to `false` when the modal is dismissed without navigating, e.g. via the X button). Both must be called in `closeModal` to avoid the user being stuck authenticated but on the login screen.
+**Auth navigation guards**: App.js holds three refs — `registrationInProgress`, `loginInProgress`, and `isInitialLoad` — that control `onAuthStateChanged` behavior. `isInitialLoad` is `true` only for the first auth callback; it allows silent session restore (redirect straight to `menu`) while blocking that same auto-redirect for subsequent login/register flows that should navigate via their own modal callbacks instead. The auth callback navigates only after the flow's own modal/callback fires. Login and Register each receive two callbacks: `onLoginComplete`/`onRegistrationComplete` (sets ref to `true` before showing the success modal) and `onLoginReset`/`onRegistrationReset` (sets ref back to `false` when the modal is dismissed without navigating, e.g. via the X button). Both must be called in `closeModal` to avoid the user being stuck authenticated but on the login screen.
 
 ### Firestore Data Model
 
@@ -47,7 +47,8 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 ### Components
 
-- [src/components/Recipes/RecipeResults.js](src/components/Recipes/RecipeResults.js) — Renders the generated recipe card with carousel navigation (`currentIndex`/`setCurrentIndex`). Handles the "regenerate" flow by calling `generateRecipe()` again with `regenerate: true` and the list of already-used recipe names. Navigates to `recipe-detail` by setting `selectedRecipe` in App.js state.
+- [src/components/Recipes/RecipeResults.js](src/components/Recipes/RecipeResults.js) — Renders the generated recipe card with carousel navigation (`currentIndex`/`setCurrentIndex`). Handles the "regenerate" flow by calling `generateRecipe()` again with `regenerate: true` and the list of already-used recipe names (tracked in local `usedRecipeNames` state, not App.js). Reads generation params from `sessionStorage.lastRecipeParams` (written by `GenerateRecipe.js`) — if absent, the regenerate button redirects back to `generate-recipe` instead. Navigates to `recipe-detail` by setting `selectedRecipe` in App.js state.
+- [src/components/Ingredients/Inventory.js](src/components/Ingredients/Inventory.js) — Polls Firestore every 60 seconds to refresh expiry status live.
 
 ### Utils
 
@@ -59,7 +60,7 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 **Adding an ingredient**: `RegisterIngredient.js` → `getFoodSuggestionsComplete()` for autocomplete → `calculateExpirationDateComplete()` for expiry → saves to Firestore `users/{userId}/ingredients`. Dates are normalized to 12:00 PM local time to avoid UTC offset issues.
 
-**Generating a recipe**: `GenerateRecipe.js` → `openaiService.generateRecipe()` → proxy at `Api/index.js` → OpenAI (structured `json_schema` output) → JSON sanitized/validated → results passed via App.js state to `RecipeResults.js`. Available categories: `Snack`, `Postre`, `Saludable`, `Rápida`, `Internacional`, `Mexicana`, `Vegana`, `Vegetariana`, `Alta en proteína`.
+**Generating a recipe**: `GenerateRecipe.js` → `openaiService.generateRecipe()` → proxy at `Api/index.js` → OpenAI (structured `json_schema` output) → JSON sanitized/validated → results passed via App.js state to `RecipeResults.js`. Before navigating, `GenerateRecipe.js` also: (1) saves the generation params to `sessionStorage.lastRecipeParams` for use by the regenerate button, and (2) appends `usedPendingDishIds` and `usedPendingDishNames` to each recipe object so `RecipeDetail.js` can auto-delete consumed pending dishes. Available categories: `Snack`, `Postre`, `Saludable`, `Rápida`, `Internacional`, `Mexicana`, `Vegana`, `Vegetariana`, `Alta en proteína`.
 
 **Completing a recipe** (`RecipeDetail.js`): decrements ingredient quantities in Firestore; deletes if quantity ≤ 0; if a `Piezas` ingredient transitions from whole to fractional (`isFractioned = true`), recalculates expiry using the `fraccionado` days from `foodDatabase`. Also removes any pending dishes consumed by the recipe.
 

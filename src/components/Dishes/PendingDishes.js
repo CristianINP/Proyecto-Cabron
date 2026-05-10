@@ -72,10 +72,10 @@ const PendingDishes = ({ setCurrentView, userId }) => {
         try {
           await deleteDoc(doc(db, `users/${userId}/pendingDishes`, id));
           setDishes(dishes.filter(dish => dish.id !== id));
-          showModal('success', '!Platillo terminado¡', 'Puedes consultar esta receta en tu historial.');
+          showModal('success', '!Platillo Terminado¡', 'Puedes consultar esta receta en tu historial.');
         } catch (error) {
           console.error('Error al eliminar:', error);
-          showModal('error', 'Error', 'Error al marcar como terminado');
+          showModal('error', 'Error', 'Error al marcar como Terminado');
         }
       }
     );
@@ -128,13 +128,13 @@ const PendingDishes = ({ setCurrentView, userId }) => {
           {dishes.length === 0 ? (
             <div className="text-center py-12 bg-white/60 rounded-2xl border-2 border-dashed border-food-200">
               <div className="text-6xl mb-4">🍽️</div>
-              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes platillos almacenados</p>
+              <p className="text-gray-600 mb-2 text-lg font-medium">No tienes Platillos Almacenados</p>
               <p className="text-gray-500 text-sm mb-6">Guarda una receta como pendiente para verla aquí</p>
               <button
                 onClick={() => setCurrentView('generate-recipe')}
-                className="btn-food flex items-center justify-center gap-2"
+                className="btn-food flex items-center justify-center gap-2 mx-auto"
               >
-                <ChefHat size={18} /> Generar una receta
+                <ChefHat size={18} /> Generar una Receta
               </button>
             </div>
           ) : (

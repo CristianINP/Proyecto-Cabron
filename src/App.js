@@ -31,6 +31,9 @@ function App() {
   // Ref para bloquear la redirección automática durante el login
   const loginInProgress = useRef(false);
 
+  // Ref para distinguir la restauración de sesión inicial de un login/registro nuevo
+  const isInitialLoad = useRef(true);
+
   // Estados para pasar datos entre componentes de recetas
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [generatedRecipes, setGeneratedRecipes] = useState([]);
@@ -42,13 +45,14 @@ function App() {
       setUser(currentUser);
       setLoading(false);
 
-      // Si hay usuario, ir al menú principal (a menos que el registro o login estén en progreso)
-      if (currentUser && !registrationInProgress.current && !loginInProgress.current) {
+      // Primera carga: restaurar sesión activa directamente (sin modal)
+      // Cargas posteriores (login/register): dejar que el modal del componente navegue
+      if (currentUser && isInitialLoad.current && !registrationInProgress.current && !loginInProgress.current) {
         setCurrentView('menu');
       } else if (!currentUser) {
         setCurrentView('login');
       }
-      // Si currentUser existe pero hay una acción en progreso, no hacer nada — el callback del modal navegará
+      isInitialLoad.current = false;
     });
 
     // Cleanup subscription
