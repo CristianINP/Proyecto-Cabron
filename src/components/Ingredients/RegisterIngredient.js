@@ -117,6 +117,9 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
       // Limitar a máximo 2 decimales antes de guardar
       finalQuantity = parseFloat(finalQuantity.toFixed(2));
 
+      // Determinar tipo de fecha: manual si el usuario activó edición manual Y proporcionó fecha
+      const expirationDateType = (manualExpiration && formData.expirationDate) ? 'manual' : 'calculada';
+
       const ingredientData = {
         name: formData.name,
         quantity: finalQuantity,
@@ -124,6 +127,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
         purchaseDate: normalizedPurchaseDate,
         expirationDate: normalizedExpirationDate,
         isFractioned: parseFloat(formData.quantity) < 1,
+        expirationDateType,
         createdAt: new Date().toISOString(),
         userId: userId
       };
@@ -233,7 +237,7 @@ const RegisterIngredient = ({ setCurrentView, userId }) => {
                 </label>
                 <input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0.25"
                   value={formData.quantity}
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}

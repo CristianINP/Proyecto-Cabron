@@ -1,73 +1,55 @@
 // src/utils/dateCalculations.js
 
-// Función para verificar si un ingrediente es prioritario (3 días o menos)
-export const isPriority = (expirationDate) => {
-  if (!expirationDate) return false;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const expDate = new Date(expirationDate);
-  expDate.setHours(0, 0, 0, 0);
-  
-  const diffTime = expDate - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays <= 3 && diffDays >= 0;
+const TZ = 'America/Mexico_City';
+
+// Returns "YYYY-MM-DD" in Guadalajara local time for any Date or ISO string
+const toLocalDateStr = (value) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(value));
+
+// Creates a Date at local midnight for a given date/datetime value.
+// Using local midnight ensures day-level comparisons are timezone-correct.
+const toLocalMidnight = (value) => {
+  const [y, m, d] = toLocalDateStr(value).split('-').map(Number);
+  return new Date(y, m - 1, d);
 };
 
-// Función para verificar si un ingrediente/platillo está caducado
+export const isPriority = (expirationDate) => {
+  if (!expirationDate) return false;
+  const today = toLocalMidnight(new Date());
+  const expDate = toLocalMidnight(expirationDate);
+  const diffDays = Math.round((expDate - today) / 864e5);
+  return diffDays >= 0 && diffDays <= 3;
+};
+
 export const isExpired = (expirationDate) => {
   if (!expirationDate) return false;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const expDate = new Date(expirationDate);
-  expDate.setHours(0, 0, 0, 0);
-  
+  const today = toLocalMidnight(new Date());
+  const expDate = toLocalMidnight(expirationDate);
   return expDate < today;
 };
 
-// Función para calcular días restantes (puede ser negativo si ya caducó)
 export const getDaysRemaining = (expirationDate) => {
   if (!expirationDate) return null;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const expDate = new Date(expirationDate);
-  expDate.setHours(0, 0, 0, 0);
-  
-  const diffTime = expDate - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays;
+  const today = toLocalMidnight(new Date());
+  const expDate = toLocalMidnight(expirationDate);
+  return Math.round((expDate - today) / 864e5);
 };
 
-// Función para formatear fecha a string legible
-export const formatDate = (date) => {
-  if (!date) return '';
-  
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = String(d.getFullYear()).slice(-2);
-  
-  return `${day}/${month}/${year}`;
+export const formatDate = (dateString) => {
+  if (!dateString) return 'Fecha desconocida';
+  return new Date(dateString).toLocaleDateString('es-MX', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: TZ
+  });
 };
 
-// Función para convertir fecha a formato ISO (YYYY-MM-DD) para inputs
+// Returns "YYYY-MM-DD" in local timezone — safe for <input type="date"> values
 export const toISODateString = (date) => {
   if (!date) return '';
-  
-  const d = new Date(date);
-  return d.toISOString().split('T')[0];
+  return toLocalDateStr(date);
 };
 
-// Función para obtener fecha actual en formato ISO
-export const getTodayISO = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today.toLocaleDateString('en-CA'); // YYYY-MM-DD
-};
+// Returns "YYYY-MM-DD" for today in Guadalajara
+export const getTodayISO = () => toLocalDateStr(new Date());

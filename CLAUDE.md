@@ -23,7 +23,7 @@ Both servers must run simultaneously for recipe generation to work — the React
 
 ### Routing
 
-There is no React Router. Navigation is view-based state in [src/App.js](src/App.js): a `currentView` string controls which component renders. Components call `setCurrentView('...')` to navigate. Valid views: `login`, `register`, `recovery`, `menu`, `inventory`, `register-ingredient`, `generate-recipe`, `recipe-results`, `recipe-detail`, `pending-dishes`.
+There is no React Router. Navigation is view-based state in [src/App.js](src/App.js): a `currentView` string controls which component renders. Components call `setCurrentView('...')` to navigate. Valid views: `login`, `register`, `recovery`, `menu`, `inventory`, `register-ingredient`, `generate-recipe`, `recipe-results`, `recipe-detail`, `pending-dishes`, `history`.
 
 Recipe data (`generatedRecipes`, `selectedRecipe`, `currentRecipeIndex`) is lifted to App.js and passed as props — there is no Context or Redux.
 
@@ -35,9 +35,10 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 | Subcollection | Fields | Notes |
 |---|---|---|
-| `ingredients` | `name`, `quantity`, `unit`, `purchaseDate`, `expirationDate`, `isFractioned` | Inventory items. `isFractioned` = quantity < 1. |
+| `ingredients` | `name`, `quantity`, `unit`, `purchaseDate`, `expirationDate`, `isFractioned`, `expirationDateType` | Inventory items. `isFractioned` = quantity < 1. `expirationDateType`: `"calculada"` (system-computed) or `"manual"` (user-entered); old docs without the field are treated as `"calculada"`. Auto-recalculation is skipped when `"manual"`. |
 | `pendingDishes` | `name`, `ingredients[]`, `instructions[]`, `expirationDate` | Saved recipes to finish later. Shelf life set by GPT-4o-mini. |
 | `personalFoods` | `name`, `completo`, `fraccionado`, `category` | User's custom food DB entries matching global `foodDatabase` schema. |
+| `history` | `name`, `ingredients[]`, `instructions[]`, `prepTime`, `servings`, `completedAt`, `favorite` | Completed recipes. Written by `RecipeDetail.js` when a recipe is marked done. |
 
 ### Services
 
@@ -47,18 +48,20 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 ### Components
 
+- [src/components/Main/MainMenu.js](src/components/Main/MainMenu.js) — Central dashboard after login. Stateless; receives `setCurrentView` and `onLogout`. Renders five navigation cards: `generate-recipe`, `register-ingredient`, `inventory`, `pending-dishes`, `history`.
+- [src/components/Dishes/History.js](src/components/Dishes/History.js) — Lists all completed recipes from `users/{userId}/history`, sorted newest-first by `completedAt`. Supports expandable accordion cards, favorite toggle (updates Firestore `favorite` field), and delete with confirmation modal.
 - [src/components/Recipes/RecipeResults.js](src/components/Recipes/RecipeResults.js) — Renders the generated recipe card with carousel navigation (`currentIndex`/`setCurrentIndex`). Handles the "regenerate" flow by calling `generateRecipe()` again with `regenerate: true` and the list of already-used recipe names (tracked in local `usedRecipeNames` state, not App.js). Reads generation params from `sessionStorage.lastRecipeParams` (written by `GenerateRecipe.js`) — if absent, the regenerate button redirects back to `generate-recipe` instead. Navigates to `recipe-detail` by setting `selectedRecipe` in App.js state.
 - [src/components/Ingredients/Inventory.js](src/components/Ingredients/Inventory.js) — Polls Firestore every 60 seconds to refresh expiry status live.
 
 ### Utils
 
 - [src/utils/recipeHelpers.js](src/utils/recipeHelpers.js) — `normalizeOpenAIResponse()` validates and normalizes recipe JSON shape; `retryOperation()` wraps async calls with exponential backoff; `cleanText()` coerces `null`/`"null"` to empty strings; `formatQuantity()` / `parseSafeQuantity()` / `isNumeric()` handle safe numeric display (avoid NaN in UI).
-- [src/utils/dateCalculations.js](src/utils/dateCalculations.js) — `isPriority()` (≤3 days), `isExpired()`, `getDaysRemaining()`, `formatDate()`, `toISODateString()`, `getTodayISO()`.
+- [src/utils/dateCalculations.js](src/utils/dateCalculations.js) — `isPriority()` (≤3 days), `isExpired()`, `getDaysRemaining()`, `formatDate()`, `toISODateString()`, `getTodayISO()`. All functions use `Intl.DateTimeFormat` with `timeZone: 'America/Mexico_City'` to avoid UTC-offset day-shift bugs. Never compare raw `new Date(isoString)` against `setHours(0,0,0,0)` — always go through the helpers in this file.
 - [src/utils/Modal.js](src/utils/Modal.js) — Shared modal component used by all views; supports `type`: `confirm`, `success`, `error`.
 
 ### Key Data Flows
 
-**Adding an ingredient**: `RegisterIngredient.js` → `getFoodSuggestionsComplete()` for autocomplete → `calculateExpirationDateComplete()` for expiry → saves to Firestore `users/{userId}/ingredients`. Dates are normalized to 12:00 PM local time to avoid UTC offset issues.
+**Adding an ingredient**: `RegisterIngredient.js` → `getFoodSuggestionsComplete()` for autocomplete → `calculateExpirationDateComplete()` for expiry → saves to Firestore `users/{userId}/ingredients`. Dates are normalized to 12:00 PM local time via `normalizeDateForFirestore()` (splits the `YYYY-MM-DD` string and calls `new Date(y, m-1, d, 12)` — never `new Date(dateOnlyString)` which would parse as UTC midnight). `calculateExpirationDateComplete` applies the same local-noon construction before adding shelf-life days.
 
 **Generating a recipe**: `GenerateRecipe.js` → `openaiService.generateRecipe()` → proxy at `Api/index.js` → OpenAI (structured `json_schema` output) → JSON sanitized/validated → results passed via App.js state to `RecipeResults.js`. Before navigating, `GenerateRecipe.js` also: (1) saves the generation params to `sessionStorage.lastRecipeParams` for use by the regenerate button, and (2) appends `usedPendingDishIds` and `usedPendingDishNames` to each recipe object so `RecipeDetail.js` can auto-delete consumed pending dishes. Available categories: `Snack`, `Postre`, `Saludable`, `Rápida`, `Internacional`, `Mexicana`, `Vegana`, `Vegetariana`, `Alta en proteína`.
 

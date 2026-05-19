@@ -125,9 +125,14 @@ export const calculateExpirationDate = (purchaseDate, foodName, quantity) => {
   const isFractioned = quantity < 1;
   const daysToAdd = isFractioned ? food.fraccionado : food.completo;
 
-  if (daysToAdd === 0) return null; // No se debe refrigerar
+  if (daysToAdd === 0) return null;
 
-  const expDate = new Date(purchaseDate);
+  // Parse as local noon to avoid UTC-offset day-shift on date-only strings
+  const dateOnly = typeof purchaseDate === 'string'
+    ? purchaseDate.split('T')[0]
+    : new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date(purchaseDate));
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  const expDate = new Date(y, m - 1, d, 12);
   expDate.setDate(expDate.getDate() + daysToAdd);
 
   return expDate;
@@ -230,7 +235,6 @@ export const getFoodSuggestionsComplete = async (searchTerm, userId) => {
 
 // Calcular fecha de caducidad buscando en AMBAS bases
 export const calculateExpirationDateComplete = async (purchaseDate, foodName, quantity, userId) => {
-  // Buscar en ambas bases
   const food = await searchFoodComplete(foodName, userId);
 
   if (!food) return null;
@@ -240,7 +244,12 @@ export const calculateExpirationDateComplete = async (purchaseDate, foodName, qu
 
   if (daysToAdd === 0) return null;
 
-  const expDate = new Date(purchaseDate);
+  // Parse as local noon to avoid UTC-offset day-shift on date-only strings
+  const dateOnly = typeof purchaseDate === 'string'
+    ? purchaseDate.split('T')[0]
+    : new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date(purchaseDate));
+  const [y, m, d] = dateOnly.split('-').map(Number);
+  const expDate = new Date(y, m - 1, d, 12);
   expDate.setDate(expDate.getDate() + daysToAdd);
 
   return expDate;

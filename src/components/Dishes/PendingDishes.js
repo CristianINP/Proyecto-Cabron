@@ -1,6 +1,6 @@
 // src/components/Dishes/PendingDishes.js
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { getDaysRemaining, isExpired } from '../../utils/dateCalculations';
 import { XCircle, Clock, CheckCircle, BookOpen, ChefHat } from 'lucide-react';
@@ -70,6 +70,22 @@ const PendingDishes = ({ setCurrentView, userId }) => {
       `¿Deseas marcar "${name}" como terminado?`,
       async () => {
         try {
+          const dish = dishes.find(d => d.id === id);
+          if (dish) {
+            try {
+              await addDoc(collection(db, `users/${userId}/history`), {
+                name: dish.name,
+                ingredients: dish.ingredients || [],
+                instructions: dish.instructions || [],
+                prepTime: dish.prepTime ?? null,
+                servings: dish.servings ?? null,
+                completedAt: new Date().toISOString(),
+                favorite: false
+              });
+            } catch (historyError) {
+              console.error('Error al guardar en historial:', historyError);
+            }
+          }
           await deleteDoc(doc(db, `users/${userId}/pendingDishes`, id));
           setDishes(dishes.filter(dish => dish.id !== id));
           showModal('success', '!Platillo Terminado¡', 'Puedes consultar esta receta en tu historial.');

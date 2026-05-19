@@ -14,6 +14,7 @@ import GenerateRecipe from './components/Recipes/GenerateRecipe';
 import RecipeResults from './components/Recipes/RecipeResults';
 import RecipeDetail from './components/Recipes/RecipeDetail';
 import PendingDishes from './components/Dishes/PendingDishes';
+import History from './components/Dishes/History';
 
 function App() {
   // Estado para controlar la vista actual
@@ -143,6 +144,14 @@ function App() {
       case 'pending-dishes':
         return (
           <PendingDishes
+            setCurrentView={setCurrentView}
+            userId={user?.uid}
+          />
+        );
+
+      case 'history':
+        return (
+          <History
             setCurrentView={setCurrentView}
             userId={user?.uid}
           />

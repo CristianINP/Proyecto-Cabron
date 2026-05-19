@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, RefreshCw } from 'lucide-react';
 import { isPriority, isExpired, formatDate } from '../../utils/dateCalculations';
-import { searchFood } from '../../services/foodDatabase';
+import { searchFood, calculateExpirationDateComplete } from '../../services/foodDatabase';
 import Modal from '../../utils/Modal';
 
 // Emojis de comida según tipo de estado
@@ -129,7 +129,7 @@ const Inventory = ({ setCurrentView, userId }) => {
     showModal(
       'confirm',
       'Eliminar Ingrediente',
-      `¿Estás seguro de Eliminar ${name}?`,
+      `¿Está seguro de eliminar ${name}?`,
       async () => {
         try {
           await deleteDoc(doc(db, `users/${userId}/ingredients`, id));
@@ -150,7 +150,9 @@ const Inventory = ({ setCurrentView, userId }) => {
       unit: ingredient.unit,
       expirationDate: ingredient.expirationDate,
       purchaseDate: ingredient.purchaseDate,
-      name: ingredient.name
+      name: ingredient.name,
+      expirationDateType: ingredient.expirationDateType || 'calculada',
+      dateManuallyChanged: false
     });
   };
 
@@ -187,39 +189,47 @@ const Inventory = ({ setCurrentView, userId }) => {
           const ingredientRef = doc(db, `users/${userId}/ingredients`, id);
           const isFractioned = newQuantity < 1;
 
-          // Normalize the manually-entered date (YYYY-MM-DD) to a proper ISO
-          // string with a fixed noon time, matching RegisterIngredient.js behaviour.
-          // editForm.expirationDate may be a full ISO string (original value) or a
-          // plain YYYY-MM-DD string (set by the date <input> onChange).
+          // Normalize the date (YYYY-MM-DD or full ISO) to noon-fixed ISO string
           const rawDate = editForm.expirationDate || '';
           const dateOnly = rawDate.length > 10 ? rawDate.split('T')[0] : rawDate;
           let newExpirationDate = dateOnly ? normalizeDateForFirestore(dateOnly) : rawDate;
 
-          // Auto-recalculate expiry only when the unit is 'Piezas' AND the user
-          // has NOT manually changed the date (i.e. the date input was not touched).
-          // We detect a manual change by comparing the stored dateOnly against what
-          // the original ingredient had; if they differ the user intentionally set a
-          // new date so we respect it.
-          const originalDateOnly = ingredients.find(ing => ing.id === id)?.expirationDate?.split('T')[0] || '';
-          const userChangedDate = dateOnly !== originalDateOnly;
+          // Determinar el tipo de fecha resultante
+          let newExpirationDateType = editForm.expirationDateType || 'calculada';
 
-          if (editForm.unit === 'Piezas' && !userChangedDate) {
-            const food = searchFood(editForm.name);
-            if (food) {
-              const purchaseDate = new Date(editForm.purchaseDate);
-              const expDate = new Date(purchaseDate);
-
-              if (isFractioned) {
-                // 🧩 Fraccionado
-                expDate.setDate(expDate.getDate() + food.fraccionado);
-              } else {
-                // 📦 Entero (regresar a fecha normal)
-                expDate.setDate(expDate.getDate() + food.completo);
+          if (editForm.dateManuallyChanged) {
+            // El usuario cambió la fecha explícitamente → marcar como manual
+            newExpirationDateType = 'manual';
+          } else if (newExpirationDateType !== 'manual') {
+            // La fecha NO es manual (calculada o sin bandera) → recalcular automáticamente
+            const purchaseDateStr = typeof editForm.purchaseDate === 'string'
+              ? editForm.purchaseDate.split('T')[0]
+              : editForm.purchaseDate;
+            const calculatedDate = await calculateExpirationDateComplete(
+              purchaseDateStr,
+              editForm.name,
+              newQuantity,
+              userId
+            );
+            if (calculatedDate) {
+              newExpirationDate = calculatedDate.toISOString();
+              newExpirationDateType = 'calculada';
+            } else {
+              // Fallback: usar searchFood para unidad Piezas
+              if (editForm.unit === 'Piezas') {
+                const food = searchFood(editForm.name);
+                if (food) {
+                  const purchaseDate = new Date(editForm.purchaseDate);
+                  const expDate = new Date(purchaseDate);
+                  expDate.setDate(expDate.getDate() + (isFractioned ? food.fraccionado : food.completo));
+                  newExpirationDate = expDate.toISOString();
+                  newExpirationDateType = 'calculada';
+                }
               }
-
-              newExpirationDate = expDate.toISOString();
             }
           }
+          // Si newExpirationDateType === 'manual' y el usuario NO cambió la fecha,
+          // simplemente se conserva la fecha actual sin modificarla.
 
           // Guardar con cantidad formateada a 2 decimales
           const formattedQuantity = parseFloat(newQuantity.toFixed(2));
@@ -228,6 +238,7 @@ const Inventory = ({ setCurrentView, userId }) => {
             quantity: formattedQuantity,
             unit: editForm.unit,
             expirationDate: newExpirationDate,
+            expirationDateType: newExpirationDateType,
             isFractioned
           });
 
@@ -238,6 +249,7 @@ const Inventory = ({ setCurrentView, userId }) => {
                 quantity: formattedQuantity,
                 unit: editForm.unit,
                 expirationDate: newExpirationDate,
+                expirationDateType: newExpirationDateType,
                 isFractioned
               }
               : ing
@@ -245,13 +257,52 @@ const Inventory = ({ setCurrentView, userId }) => {
 
           setEditingId(null);
           setEditForm({});
-          showModal('success', '¡Actualizado!', 'Ingrediente actualizado exitosamente');
+          showModal('success', '¡Actualizado!', 'Ingrediente Actualizado Exitosamente');
         } catch (error) {
           console.error('Error al actualizar:', error);
           showModal('error', 'Error', 'Error al Actualizar el Ingrediente');
         }
       }
     );
+  };
+
+  // Volver a cálculo automático de fecha de caducidad
+  const resetToCalculatedExpiration = async (ingredient) => {
+    try {
+      const purchaseDateStr = typeof ingredient.purchaseDate === 'string'
+        ? ingredient.purchaseDate.split('T')[0]
+        : ingredient.purchaseDate;
+      const calculatedDate = await calculateExpirationDateComplete(
+        purchaseDateStr,
+        ingredient.name,
+        ingredient.quantity,
+        userId
+      );
+
+      if (!calculatedDate) {
+        showModal('error', 'Sin datos', 'No se encontró información de caducidad para este alimento.');
+        return;
+      }
+
+      const newExpirationDate = calculatedDate.toISOString();
+      const ingredientRef = doc(db, `users/${userId}/ingredients`, ingredient.id);
+
+      await updateDoc(ingredientRef, {
+        expirationDate: newExpirationDate,
+        expirationDateType: 'calculada'
+      });
+
+      setIngredients(ingredients.map(ing =>
+        ing.id === ingredient.id
+          ? { ...ing, expirationDate: newExpirationDate, expirationDateType: 'calculada' }
+          : ing
+      ));
+
+      showModal('success', '¡Listo!', 'Fecha de caducidad recalculada automáticamente.');
+    } catch (error) {
+      console.error('Error al recalcular caducidad:', error);
+      showModal('error', 'Error', 'No se pudo recalcular la fecha de caducidad.');
+    }
   };
 
   // Función para formatear cantidad a 2 decimales
@@ -349,7 +400,7 @@ const Inventory = ({ setCurrentView, userId }) => {
                               <input
                                 type="number"
                                 step="0.01"
-                                min="0.5"
+                                min="0.25"
                                 value={editForm.quantity}
                                 onChange={(e) =>
                                   setEditForm({
@@ -394,7 +445,12 @@ const Inventory = ({ setCurrentView, userId }) => {
                             <input
                               type="date"
                               value={editForm.expirationDate ? new Date(editForm.expirationDate).toISOString().split('T')[0] : ''}
-                              onChange={(e) => setEditForm({ ...editForm, expirationDate: e.target.value })}
+                              onChange={(e) => setEditForm({
+                                ...editForm,
+                                expirationDate: e.target.value,
+                                dateManuallyChanged: true,
+                                expirationDateType: 'manual'
+                              })}
                               className="px-2 py-1 border rounded text-sm"
                             />
                           ) : (
@@ -442,12 +498,23 @@ const Inventory = ({ setCurrentView, userId }) => {
                               <button
                                 onClick={() => startEdit(ingredient)}
                                 className="text-blue-600 hover:text-blue-700"
+                                title="Editar ingrediente"
                               >
                                 <Edit2 size={16} />
                               </button>
+                              {ingredient.expirationDateType === 'manual' && (
+                                <button
+                                  onClick={() => resetToCalculatedExpiration(ingredient)}
+                                  className="text-food-500 hover:text-food-700"
+                                  title="Volver a fecha calculada automáticamente"
+                                >
+                                  <RefreshCw size={16} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleDelete(ingredient.id, ingredient.name)}
                                 className="text-red-600 hover:text-red-700"
+                                title="Eliminar ingrediente"
                               >
                                 <Trash2 size={16} />
                               </button>
