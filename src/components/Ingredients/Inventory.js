@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Edit2, Trash2, RefreshCw } from 'lucide-react';
-import { isPriority, isExpired, formatDate } from '../../utils/dateCalculations';
+import { isPriority, isExpired, formatDate, toISODateString } from '../../utils/dateCalculations';
 import { searchFood, calculateExpirationDateComplete } from '../../services/foodDatabase';
 import Modal from '../../utils/Modal';
 
@@ -444,7 +444,7 @@ const Inventory = ({ setCurrentView, userId }) => {
                           {isEditing ? (
                             <input
                               type="date"
-                              value={editForm.expirationDate ? new Date(editForm.expirationDate).toISOString().split('T')[0] : ''}
+                              value={editForm.expirationDate ? toISODateString(editForm.expirationDate) : ''}
                               onChange={(e) => setEditForm({
                                 ...editForm,
                                 expirationDate: e.target.value,

@@ -19,8 +19,12 @@ const RecipeResults = ({
 
   // Guardar los parámetros de la última generación
   const [lastParams] = useState(() => {
-    const saved = sessionStorage.getItem('lastRecipeParams');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = sessionStorage.getItem('lastRecipeParams');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   // Formatear warning de porciones de forma segura

@@ -1,5 +1,5 @@
 // src/components/Auth/Register.js
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
@@ -29,6 +29,7 @@ const Register = ({ setCurrentView, onRegistrationComplete, onRegistrationReset 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false, type: 'success', title: '', message: '', onConfirm: () => {}
   });
+  const registrationCompleted = useRef(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -40,7 +41,10 @@ const Register = ({ setCurrentView, onRegistrationComplete, onRegistrationReset 
   const showModal = (type, title, message, onConfirm = () => {}) => {
     setModalConfig({ isOpen: true, type, title, message, onConfirm });
   };
-  const closeModal = () => { onRegistrationReset?.(); setModalConfig(prev => ({ ...prev, isOpen: false })); };
+  const closeModal = () => {
+    if (!registrationCompleted.current) onRegistrationReset?.();
+    setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
 
   const validateForm = () => {
     // Validar campos vacíos
@@ -106,11 +110,16 @@ const Register = ({ setCurrentView, onRegistrationComplete, onRegistrationReset 
           createdAt: new Date().toISOString()
         });
       } catch (firestoreError) {
-        await user.delete();
+        try {
+          await user.delete();
+        } catch (deleteError) {
+          console.error('Error al limpiar cuenta parcial:', deleteError);
+        }
         throw firestoreError;
       }
 
       // Bloquear redirección automática y mostrar modal de éxito
+      registrationCompleted.current = true;
       onRegistrationComplete?.();
       showModal('welcome', 'Cuenta creada', 'Tu cuenta ha sido creada exitosamente. Bienvenido a Ready to Cook.', () => setCurrentView('menu'));
     } catch (error) {

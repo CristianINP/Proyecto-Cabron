@@ -1,6 +1,6 @@
 // src/components/Recipes/RecipeDetail.js
 import React, { useState } from 'react';
-import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { calculateDishShelfLife } from '../../services/openaiService';
 import { Check, Clock, BookOpen } from 'lucide-react';
@@ -101,10 +101,11 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         try {
           const ingredientsSnapshot = await getDocs(collection(db, `users/${userId}/ingredients`));
           const usedIngredientsReport = [];
+          const batch = writeBatch(db);
 
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
-            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
+            const ingredientDoc = ingredientsSnapshot.docs.find(d => d.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
@@ -112,7 +113,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
               const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
 
               if (newQuantity <= 0) {
-                await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
+                batch.delete(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
                 usedIngredientsReport.push(`${ing.name}: Inventario Utilizado por Completo (${formatQuantity(currentData.quantity)} ${currentData.unit})`);
               } else {
                 const isFractioned = newQuantity < 1;
@@ -127,7 +128,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                     updateData.expirationDate = newExpDate.toISOString();
                   }
                 }
-                await updateDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
+                batch.update(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
                 const singularMap = { Piezas: 'Pieza', Kilogramos: 'Kilogramo', Gramos: 'Gramo', Litros: 'Litro', Mililitros: 'Mililitro' };
                 const displayUnit = quantityUsed === 1 ? (singularMap[ing.usedUnit] || ing.usedUnit) : ing.usedUnit;
                 const usedWord = ing.usedUnit === 'Piezas' ? (quantityUsed === 1 ? 'usada' : 'usadas') : (quantityUsed === 1 ? 'usado' : 'usados');
@@ -143,13 +144,16 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           }
 
           const usedIngredientsForHistory = usedIngredients.filter(ing => ing.used).map(ing => ({ name: ing.name, quantity: ing.usedQuantity, unit: ing.usedUnit }));
-          await addDoc(collection(db, `users/${userId}/history`), {
+          const historyRef = doc(collection(db, `users/${userId}/history`));
+          batch.set(historyRef, {
             name: recipe.name, ingredients: usedIngredientsForHistory, instructions: recipe.instructions || [],
             categories: recipe.categories || [], prepTime: recipe.prepTime || null, servings: recipe.servings || 2,
             completedAt: new Date().toISOString(), favorite: false
           });
 
-          // Auto-eliminar platillos pendientes que se usaron como complemento
+          await batch.commit();
+
+          // Auto-eliminar platillos pendientes que se usaron como complemento (best-effort)
           if (recipe.usedPendingDishIds && recipe.usedPendingDishIds.length > 0) {
             for (const dishId of recipe.usedPendingDishIds) {
               try {
@@ -195,16 +199,18 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
         try {
           const ingredientsSnapshot = await getDocs(collection(db, `users/${userId}/ingredients`));
           const usedIngredientsReport = [];
+          const batch = writeBatch(db);
+
           for (const ing of usedIngredients) {
             if (!ing.used) continue;
-            const ingredientDoc = ingredientsSnapshot.docs.find(doc => doc.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
+            const ingredientDoc = ingredientsSnapshot.docs.find(d => d.data().name?.toLowerCase().trim() === ing.name.toLowerCase().trim());
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
               const quantityUsed = Math.round((parsedQty.type === 'number' ? parsedQty.number : 0) * 100) / 100;
               const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
               if (newQuantity <= 0) {
-                await deleteDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
+                batch.delete(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));
                 usedIngredientsReport.push(`${ing.name}: Inventario Utilizado por Completo (${formatQuantity(currentData.quantity)} ${currentData.unit})`);
               } else {
                 const isFractioned = newQuantity < 1;
@@ -219,7 +225,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
                     updateData.expirationDate = newExpDate.toISOString();
                   }
                 }
-                await updateDoc(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
+                batch.update(doc(db, `users/${userId}/ingredients`, ingredientDoc.id), updateData);
                 const singularMap = { Piezas: 'Pieza', Kilogramos: 'Kilogramo', Gramos: 'Gramo', Litros: 'Litro', Mililitros: 'Mililitro' };
                 const displayUnit = quantityUsed === 1 ? (singularMap[ing.usedUnit] || ing.usedUnit) : ing.usedUnit;
                 const usedWord = ing.usedUnit === 'Piezas' ? (quantityUsed === 1 ? 'usada' : 'usadas') : (quantityUsed === 1 ? 'usado' : 'usados');
@@ -238,17 +244,21 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
           try { daysRemaining = await calculateDishShelfLife(recipe.ingredients.map(ing => ({ name: ing.name }))); } catch { }
 
           const usedIngredientsForPending = usedIngredients.filter(ing => ing.used).map(ing => ({ name: ing.name, quantity: ing.usedQuantity, unit: ing.usedUnit }));
-          await addDoc(collection(db, `users/${userId}/pendingDishes`), {
+          const pendingRef = doc(collection(db, `users/${userId}/pendingDishes`));
+          batch.set(pendingRef, {
             name: recipe.name, ingredients: usedIngredientsForPending, instructions: recipe.instructions || [], daysRemaining,
             expirationDate: new Date(Date.now() + daysRemaining * 24 * 60 * 60 * 1000).toISOString(), createdAt: new Date().toISOString()
           });
-          await addDoc(collection(db, `users/${userId}/history`), {
+          const historyRef = doc(collection(db, `users/${userId}/history`));
+          batch.set(historyRef, {
             name: recipe.name, ingredients: usedIngredientsForPending, instructions: recipe.instructions || [],
             categories: recipe.categories || [], prepTime: recipe.prepTime || null, servings: recipe.servings || 2,
             completedAt: new Date().toISOString(), favorite: false
           });
 
-          // Auto-eliminar platillos pendientes que se usaron como complemento
+          await batch.commit();
+
+          // Auto-eliminar platillos pendientes que se usaron como complemento (best-effort)
           if (recipe.usedPendingDishIds && recipe.usedPendingDishIds.length > 0) {
             for (const dishId of recipe.usedPendingDishIds) {
               try {
