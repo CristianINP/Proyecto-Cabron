@@ -33,9 +33,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
           {/* Generar Recetas con IA — featured button, full width */}
           <button
             onClick={() => setCurrentView('generate-recipe')}
-            className="md:col-span-2 bg-gradient-to-br from-food-50 via-cream-50 to-food-100 border-2 border-food-600 rounded-2xl shadow-lg p-10 hover:scale-[1.02] transition-all duration-300 group relative overflow-hidden">
+            className="md:col-span-2 bg-gradient-to-br from-food-50 via-cream-50 to-food-100 border-2 border-food-600 hover:border-food-800 rounded-2xl shadow-lg hover:shadow-2xl p-10 hover:scale-[1.03] transition-all duration-300 group relative overflow-hidden">
             {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-food-100 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
 
             <div className="bg-food-200 w-24 h-24 rounded-full flex items-center justify-center mb-4 group-hover:bg-food-300 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-5xl">🍳</span>
@@ -49,9 +49,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
 
           <button
             onClick={() => setCurrentView('register-ingredient')}
-            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-700">
+            className="card-food p-8 hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-800">
             {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-food-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
 
             <div className="bg-food-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-food-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">🥬</span>
@@ -63,9 +63,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
 
           <button
             onClick={() => setCurrentView('inventory')}
-            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-700">
+            className="card-food p-8 hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-800">
             {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
 
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">📦</span>
@@ -77,9 +77,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
 
           <button
             onClick={() => setCurrentView('pending-dishes')}
-            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-700">
+            className="card-food p-8 hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-800">
             {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
 
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">⌛</span>
@@ -92,9 +92,9 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
 
           <button
             onClick={() => setCurrentView('history')}
-            className="card-food p-8 hover:scale-105 transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-700">
+            className="card-food p-8 hover:scale-[1.03] hover:shadow-2xl transition-all duration-300 group relative overflow-hidden border-2 border-food-600 hover:border-food-800">
             {/* Efecto de hover */}
-            <div className="absolute inset-0 bg-gradient-to-r from-fresh-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"></div>
 
             <div className="bg-fresh-100 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:bg-fresh-200 transition-all duration-300 group-hover:scale-110 mx-auto relative">
               <span className="text-4xl">📚</span>

@@ -105,7 +105,7 @@ const Inventory = ({ setCurrentView, userId }) => {
       setIngredients(sorted);
     } catch (error) {
       console.error('Error al Cargar Ingredientes:', error);
-      showModal('error', 'Error', 'Error al Cargar el Inventario');
+      showModal('error', 'Error', 'Error al cargar el inventario');
     } finally {
       setLoading(false);
     }
@@ -128,16 +128,16 @@ const Inventory = ({ setCurrentView, userId }) => {
   const handleDelete = (id, name) => {
     showModal(
       'confirm',
-      'Eliminar Ingrediente',
+      'Eliminar ingrediente',
       `¿Está seguro de eliminar ${name}?`,
       async () => {
         try {
           await deleteDoc(doc(db, `users/${userId}/ingredients`, id));
           setIngredients(ingredients.filter(ing => ing.id !== id));
-          showModal('success', '¡Eliminado!', 'Ingrediente Eliminado Exitosamente');
+          showModal('success', '¡Eliminado!', 'Ingrediente eliminado exitosamente');
         } catch (error) {
           console.error('Error al Eliminar:', error);
-          showModal('error', 'Error', 'Error al Eliminar el Ingrediente');
+          showModal('error', 'Error', 'Error al eliminar el ingrediente');
         }
       }
     );
@@ -173,7 +173,7 @@ const Inventory = ({ setCurrentView, userId }) => {
     if (!newQuantity || newQuantity < 0.25) {
       showModal(
         'error',
-        'Cantidad Inválida',
+        'Cantidad inválida',
         'La cantidad debe ser mayor o igual a 0.25'
       );
       return;
@@ -182,7 +182,7 @@ const Inventory = ({ setCurrentView, userId }) => {
     // ✅ SI PASA VALIDACIÓN, ahora sí confirmar
     showModal(
       'confirm',
-      'Guardar Cambios',
+      'Guardar cambios',
       '¿Desea guardar los cambios realizados?',
       async () => {
         try {
@@ -257,10 +257,10 @@ const Inventory = ({ setCurrentView, userId }) => {
 
           setEditingId(null);
           setEditForm({});
-          showModal('success', '¡Actualizado!', 'Ingrediente Actualizado Exitosamente');
+          showModal('success', '¡Actualizado!', 'Ingrediente actualizado exitosamente');
         } catch (error) {
           console.error('Error al actualizar:', error);
-          showModal('error', 'Error', 'Error al Actualizar el Ingrediente');
+          showModal('error', 'Error', 'Error al actualizar el ingrediente');
         }
       }
     );

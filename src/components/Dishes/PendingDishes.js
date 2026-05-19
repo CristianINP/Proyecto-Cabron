@@ -88,10 +88,10 @@ const PendingDishes = ({ setCurrentView, userId }) => {
           }
           await deleteDoc(doc(db, `users/${userId}/pendingDishes`, id));
           setDishes(dishes.filter(dish => dish.id !== id));
-          showModal('success', '!Platillo Terminado¡', 'Puedes consultar esta receta en tu historial.');
+          showModal('success', '¡Platillo terminado!', 'Puedes consultar esta receta en tu historial.');
         } catch (error) {
           console.error('Error al eliminar:', error);
-          showModal('error', 'Error', 'Error al marcar como Terminado');
+          showModal('error', 'Error', 'Error al marcar como terminado');
         }
       }
     );

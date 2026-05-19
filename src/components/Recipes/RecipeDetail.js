@@ -74,7 +74,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
     if (parsed.type !== 'number' || isNaN(parsed.number) || parsed.number < 0.25) {
       showModal(
         'error',
-        'Cantidad Inválida',
+        'Cantidad inválida',
         'La cantidad mínima permitida es 0.25. Se ajustará automáticamente.',
         () => {
           setUsedIngredients(usedIngredients.map((ing, i) =>
@@ -94,7 +94,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const handleMarkAsCompleted = () => {
     showModal(
       'confirm',
-      'Marcar como Terminada',
+      'Marcar como terminada',
       '¿Está seguro de marcar esta receta como terminada? Se actualizará su inventario.',
       async () => {
         setSavingAction('complete');
@@ -162,7 +162,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
 
           const reportMessage = usedIngredientsReport.length > 0 ? (
             <div>
-              <p className="font-bold text-food-700 mb-3">Inventario Actualizado:</p>
+              <p className="font-bold text-food-700 mb-3">Inventario actualizado:</p>
               <ul className="space-y-2">
                 {usedIngredientsReport.map((report, idx) => (
                   <li key={idx} className="flex items-start gap-2 bg-food-50 rounded-lg px-3 py-2 border border-food-100">
@@ -176,10 +176,10 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             <p className="text-fresh-700 font-medium text-center py-2">¡Receta completada con éxito!</p>
           );
 
-          showModal('success', '¡Receta Completada!', reportMessage, () => setCurrentView('menu'));
+          showModal('success', '¡Receta completada!', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
           console.error('Error al Completar Receta:', error);
-          showModal('error', 'Error', `Error al Guardar: ${error.message}`);
+          showModal('error', 'Error', `Error al guardar: ${error.message}`);
         } finally { setSavingAction(null); }
       }
     );
@@ -188,8 +188,8 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
   const handleSaveAsPending = () => {
     showModal(
       'confirm',
-      'Guardar como Pendiente',
-      '¿Desea guardar este platillo como pendiente? Se actualizará su Inventario y podrá terminarlo después.',
+      'Guardar como pendiente',
+      '¿Desea guardar este platillo como pendiente? Se actualizará su inventario y podrá terminarlo después.',
       async () => {
         setSavingAction('pending');
         try {
@@ -261,7 +261,7 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
 
           const reportMessage = usedIngredientsReport.length > 0 ? (
             <div>
-              <p className="font-bold text-food-700 mb-3">Inventario Actualizado:</p>
+              <p className="font-bold text-food-700 mb-3">Inventario actualizado:</p>
               <ul className="space-y-2 mb-3">
                 {usedIngredientsReport.map((report, idx) => (
                   <li key={idx} className="flex items-start gap-2 bg-food-50 rounded-lg px-3 py-2 border border-food-100">
@@ -282,10 +282,10 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             </div>
           );
 
-          showModal('pending', '¡Platillo Guardado!', reportMessage, () => setCurrentView('menu'));
+          showModal('pending', '¡Platillo guardado!', reportMessage, () => setCurrentView('menu'));
         } catch (error) {
           console.error('Error al Guardar Platillo:', error);
-          showModal('error', 'Error', `Error al Guardar: ${error.message}`);
+          showModal('error', 'Error', `Error al guardar: ${error.message}`);
         } finally { setSavingAction(null); }
       }
     );

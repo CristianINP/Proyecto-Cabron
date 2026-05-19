@@ -166,11 +166,8 @@ const History = ({ setCurrentView, userId }) => {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         {/* Nombre */}
-                        <h3
-                          className="text-xl font-bold text-gray-800 mb-1 cursor-pointer hover:text-food-600 transition-colors"
-                          onClick={() => toggleExpand(recipe.id)}
-                        >
-                          {recipe.name} {isExpanded ? '▼' : '▶'}
+                        <h3 className="text-xl font-bold text-gray-800 mb-1">
+                          {recipe.name}
                         </h3>
                         <p className="text-sm text-food-500 font-medium">
                           {formatDate(recipe.completedAt)}
