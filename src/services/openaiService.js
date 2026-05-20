@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { normalizeOpenAIResponse, retryOperation } from '../utils/recipeHelpers';
 
-const API_URL = 'http://localhost:3001/openai';
+const API_URL = '/api/openai';
 
 /**
  * Verifica si un error es temporal (retryable)

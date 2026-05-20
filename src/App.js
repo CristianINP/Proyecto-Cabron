@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './services/firebase';
 
@@ -16,29 +16,61 @@ import RecipeDetail from './components/Recipes/RecipeDetail';
 import PendingDishes from './components/Dishes/PendingDishes';
 import History from './components/Dishes/History';
 
+const VIEW_PATHS = {
+  'login':               '/',
+  'register':            '/registro',
+  'recovery':            '/recuperar-cuenta',
+  'menu':                '/menu',
+  'inventory':           '/inventario',
+  'register-ingredient': '/registrar-ingrediente',
+  'generate-recipe':     '/generar-receta-con-ia',
+  'recipe-results':      '/resultados',
+  'recipe-detail':       '/detalle-receta',
+  'pending-dishes':      '/platillos-pendientes',
+  'history':             '/historial',
+};
+
+const PATH_TO_VIEW = Object.fromEntries(
+  Object.entries(VIEW_PATHS).map(([view, path]) => [path, view])
+);
+
+const PUBLIC_VIEWS = new Set(['login', 'register', 'recovery']);
+
+function getViewFromPath(pathname) {
+  return PATH_TO_VIEW[pathname] ?? 'login';
+}
+
 function App() {
-  // Estado para controlar la vista actual
-  const [currentView, setCurrentView] = useState('login');
+  const [currentView, setCurrentViewRaw] = useState(() =>
+    getViewFromPath(window.location.pathname)
+  );
 
-  // Estado para el usuario autenticado
+  // Navega a una vista y sincroniza la URL del navegador
+  const setCurrentView = useCallback((view) => {
+    const path = VIEW_PATHS[view] ?? '/';
+    window.history.pushState({ view }, '', path);
+    setCurrentViewRaw(view);
+  }, []);
+
   const [user, setUser] = useState(null);
-
-  // Estado de carga
   const [loading, setLoading] = useState(true);
 
-  // Ref para bloquear la redirección automática durante el registro
   const registrationInProgress = useRef(false);
-
-  // Ref para bloquear la redirección automática durante el login
   const loginInProgress = useRef(false);
-
-  // Ref para distinguir la restauración de sesión inicial de un login/registro nuevo
   const isInitialLoad = useRef(true);
 
-  // Estados para pasar datos entre componentes de recetas
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [generatedRecipes, setGeneratedRecipes] = useState([]);
   const [currentRecipeIndex, setCurrentRecipeIndex] = useState(0);
+
+  // Sincronizar vista con los botones Atrás/Adelante del navegador
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentViewRaw(getViewFromPath(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Verificar si hay un usuario autenticado al cargar la app
   useEffect(() => {
@@ -46,21 +78,20 @@ function App() {
       setUser(currentUser);
       setLoading(false);
 
-      // Primera carga: restaurar sesión activa directamente (sin modal)
-      // Cargas posteriores (login/register): dejar que el modal del componente navegue
       if (currentUser && isInitialLoad.current && !registrationInProgress.current && !loginInProgress.current) {
-        setCurrentView('menu');
+        // Restaurar a la vista que tenía la URL, salvo que sea una vista pública
+        const urlView = getViewFromPath(window.location.pathname);
+        const targetView = PUBLIC_VIEWS.has(urlView) ? 'menu' : urlView;
+        setCurrentView(targetView);
       } else if (!currentUser) {
         setCurrentView('login');
       }
       isInitialLoad.current = false;
     });
 
-    // Cleanup subscription
     return () => unsubscribe();
-  }, []);
+  }, [setCurrentView]);
 
-  // Función para cerrar sesión
   const handleLogout = async () => {
     try {
       await auth.signOut();
@@ -74,7 +105,6 @@ function App() {
     }
   };
 
-  // Mostrar pantalla de carga
   if (loading) {
     return (
       <div className="min-h-screen bg-food-pattern flex items-center justify-center relative overflow-hidden">
@@ -89,14 +119,25 @@ function App() {
     );
   }
 
-  // Función para renderizar el componente según la vista actual
   const renderView = () => {
     switch (currentView) {
       case 'login':
-        return <Login setCurrentView={setCurrentView} onLoginComplete={() => { loginInProgress.current = true; }} onLoginReset={() => { loginInProgress.current = false; }} />;
+        return (
+          <Login
+            setCurrentView={setCurrentView}
+            onLoginComplete={() => { loginInProgress.current = true; }}
+            onLoginReset={() => { loginInProgress.current = false; }}
+          />
+        );
 
       case 'register':
-        return <Register setCurrentView={setCurrentView} onRegistrationComplete={() => { registrationInProgress.current = true; }} onRegistrationReset={() => { registrationInProgress.current = false; }} />;
+        return (
+          <Register
+            setCurrentView={setCurrentView}
+            onRegistrationComplete={() => { registrationInProgress.current = true; }}
+            onRegistrationReset={() => { registrationInProgress.current = false; }}
+          />
+        );
 
       case 'recovery':
         return <Recovery setCurrentView={setCurrentView} />;
@@ -140,7 +181,7 @@ function App() {
             userId={user?.uid}
           />
         );
-        
+
       case 'pending-dishes':
         return (
           <PendingDishes

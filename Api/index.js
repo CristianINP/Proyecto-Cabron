@@ -12,7 +12,7 @@ app.use(cors({
 
 app.use(express.json());
 
-app.post('/openai', async (req, res) => {
+app.post('/api/openai', async (req, res) => {
   try {
     const response = await fetch(
       'https://api.openai.com/v1/chat/completions',

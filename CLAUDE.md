@@ -6,20 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Frontend (React)
-npm start          # Dev server on http://localhost:3000
+npm start          # Dev server on http://localhost:3000 (also accepts LAN connections via HOST=0.0.0.0 in .env)
 npm run build      # Production build
 npm test           # Run tests
 npm test -- --testPathPattern=<file>  # Run a single test file
 
-# Backend proxy (must run alongside frontend for recipe generation)
+# Backend proxy — local dev only (Vercel uses api/openai.js instead)
 cd Api && npm start   # Express server on http://localhost:3001
 ```
 
-Both servers must run simultaneously for recipe generation to work — the React app calls `http://localhost:3001/openai` which proxies to OpenAI.
+Both servers must run simultaneously for local recipe generation — the React app calls `/api/openai`, the CRA dev proxy (`"proxy": "http://localhost:3001"` in `package.json`) forwards it to Express. On Vercel, `/api/openai` is handled by the serverless function `api/openai.js` — no Express needed.
 
 ## Architecture
 
-**Ready-To-Cook** is a React SPA for food inventory management and AI recipe generation. Firebase handles auth and data; an Express proxy in `Api/` forwards recipe requests to OpenAI GPT-4o-mini.
+**Ready-To-Cook** is a React SPA for food inventory management and AI recipe generation. Firebase handles auth and data; OpenAI GPT-4o-mini generates recipes via a proxy.
+
+**Environments:**
+- **Local dev**: Express server in `Api/` (port 3001) + CRA dev server (port 3000). The CRA proxy rewrites `/api/openai` → Express.
+- **Production (Vercel)**: React static build served from `build/`; `api/openai.js` deployed as a Vercel Serverless Function at `/api/openai`. No Express.
+
+`git config core.ignoreCase false` is set so that `Api/` (Express) and `api/` (Vercel function) are tracked as separate paths in git, even though Windows treats them as the same directory on disk.
 
 ### Routing
 
@@ -43,13 +49,14 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 ### Services
 
 - [src/services/firebase.js](src/services/firebase.js) — Initializes Firebase; exports `auth` and `db` (Firestore). All components import directly from here.
-- [src/services/openaiService.js](src/services/openaiService.js) — `generateRecipe()` builds the OpenAI prompt, enforces a `json_schema` response format (structured output), sanitizes the result (handles typographic quotes, invalid JSON chars), and applies retry logic with exponential backoff. Temperature is 0.5 for new recipes and 0.7 for regeneration. `calculateDishShelfLife()` calls GPT-4o-mini to get refrigeration days for a pending dish (falls back to 3 days on error).
+- [src/services/openaiService.js](src/services/openaiService.js) — `generateRecipe()` builds the OpenAI prompt, enforces a `json_schema` response format (structured output), sanitizes the result (handles typographic quotes, invalid JSON chars), and applies retry logic with exponential backoff. Temperature is 0.5 for new recipes and 0.7 for regeneration. Incompatible category+ingredient combinations (e.g. Vegetariana with meat) throw an error with `isAIError: true` and `isCompatibilityError: true` — callers should surface a user-friendly message rather than retrying. `calculateDishShelfLife()` calls GPT-4o-mini to get refrigeration days for a pending dish (falls back to 3 days on error).
 - [src/services/foodDatabase.js](src/services/foodDatabase.js) — Hardcoded shelf-life database (~90 foods, both `completo` and `fraccionado` days). Key exports: `getFoodSuggestionsComplete(query, userId)` for autocomplete (merges global + personal DB); `calculateExpirationDateComplete(name, unit, purchaseDate, userId)` computes expiry; `addToPersonalFoodDatabase(userId, name, shelfLifeDays)` saves a new custom food; `searchFood(name)` returns the best global DB match (used internally when recalculating expiry after fractioning).
 
 ### Components
 
 - [src/components/Main/MainMenu.js](src/components/Main/MainMenu.js) — Central dashboard after login. Stateless; receives `setCurrentView` and `onLogout`. Renders five navigation cards: `generate-recipe`, `register-ingredient`, `inventory`, `pending-dishes`, `history`.
 - [src/components/Dishes/History.js](src/components/Dishes/History.js) — Lists all completed recipes from `users/{userId}/history`, sorted newest-first by `completedAt`. Supports expandable accordion cards, favorite toggle (updates Firestore `favorite` field), and delete with confirmation modal.
+- [src/components/Dishes/PendingDishes.js](src/components/Dishes/PendingDishes.js) — Lists saved-for-later recipes from `users/{userId}/pendingDishes`. Allows navigating to `recipe-detail` to cook a pending dish, or deleting it.
 - [src/components/Recipes/RecipeResults.js](src/components/Recipes/RecipeResults.js) — Renders the generated recipe card with carousel navigation (`currentIndex`/`setCurrentIndex`). Handles the "regenerate" flow by calling `generateRecipe()` again with `regenerate: true` and the list of already-used recipe names (tracked in local `usedRecipeNames` state, not App.js). Reads generation params from `sessionStorage.lastRecipeParams` (written by `GenerateRecipe.js`) — if absent, the regenerate button redirects back to `generate-recipe` instead. Navigates to `recipe-detail` by setting `selectedRecipe` in App.js state.
 - [src/components/Ingredients/Inventory.js](src/components/Ingredients/Inventory.js) — Polls Firestore every 60 seconds to refresh expiry status live.
 
