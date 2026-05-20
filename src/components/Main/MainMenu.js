@@ -101,7 +101,7 @@ const MainMenu = ({ setCurrentView, onLogout }) => {
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Historial de Recetas</h3>
             <p className="text-gray-600 text-center">Consulta todas tus recetas preparadas</p>
-            <div className="absolute -bottom-2 -right-2 text-2xl opacity-50">📒</div>
+            <div className="absolute -bottom-2 -right-2 text-2xl opacity-50">🗂️</div>
           </button>
         </div>
 

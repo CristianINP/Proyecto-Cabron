@@ -109,7 +109,12 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
-              const quantityUsed = Math.round((parsedQty.type === 'number' ? parsedQty.number : 0) * 100) / 100;
+              if (parsedQty.type !== 'number' || parsedQty.number <= 0) {
+                showModal('error', 'Cantidad inválida', `La cantidad de "${ing.name}" no es válida. Corrígela antes de continuar.`);
+                setSavingAction(null);
+                return;
+              }
+              const quantityUsed = Math.round(parsedQty.number * 100) / 100;
               const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
 
               if (newQuantity <= 0) {
@@ -207,7 +212,12 @@ const RecipeDetail = ({ setCurrentView, recipe, userId }) => {
             if (ingredientDoc) {
               const currentData = ingredientDoc.data();
               const parsedQty = parseSafeQuantity(ing.usedQuantity);
-              const quantityUsed = Math.round((parsedQty.type === 'number' ? parsedQty.number : 0) * 100) / 100;
+              if (parsedQty.type !== 'number' || parsedQty.number <= 0) {
+                showModal('error', 'Cantidad inválida', `La cantidad de "${ing.name}" no es válida. Corrígela antes de continuar.`);
+                setSavingAction(null);
+                return;
+              }
+              const quantityUsed = Math.round(parsedQty.number * 100) / 100;
               const newQuantity = Math.round((currentData.quantity - quantityUsed) * 100) / 100;
               if (newQuantity <= 0) {
                 batch.delete(doc(db, `users/${userId}/ingredients`, ingredientDoc.id));

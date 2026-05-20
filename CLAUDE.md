@@ -57,7 +57,7 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 - [src/utils/recipeHelpers.js](src/utils/recipeHelpers.js) — `normalizeOpenAIResponse()` validates and normalizes recipe JSON shape; `retryOperation()` wraps async calls with exponential backoff; `cleanText()` coerces `null`/`"null"` to empty strings; `formatQuantity()` / `parseSafeQuantity()` / `isNumeric()` handle safe numeric display (avoid NaN in UI).
 - [src/utils/dateCalculations.js](src/utils/dateCalculations.js) — `isPriority()` (≤3 days), `isExpired()`, `getDaysRemaining()`, `formatDate()`, `toISODateString()`, `getTodayISO()`. All functions use `Intl.DateTimeFormat` with `timeZone: 'America/Mexico_City'` to avoid UTC-offset day-shift bugs. Never compare raw `new Date(isoString)` against `setHours(0,0,0,0)` — always go through the helpers in this file.
-- [src/utils/Modal.js](src/utils/Modal.js) — Shared modal component used by all views; supports `type`: `confirm`, `success`, `error`.
+- [src/utils/Modal.js](src/utils/Modal.js) — Shared modal component used by all views; supports `type`: `confirm`, `success`, `error`, `welcome`.
 
 ### Key Data Flows
 
@@ -65,9 +65,9 @@ Each authenticated user has these subcollections under `users/{userId}/`:
 
 **Generating a recipe**: `GenerateRecipe.js` → `openaiService.generateRecipe()` → proxy at `Api/index.js` → OpenAI (structured `json_schema` output) → JSON sanitized/validated → results passed via App.js state to `RecipeResults.js`. Before navigating, `GenerateRecipe.js` also: (1) saves the generation params to `sessionStorage.lastRecipeParams` for use by the regenerate button, and (2) appends `usedPendingDishIds` and `usedPendingDishNames` to each recipe object so `RecipeDetail.js` can auto-delete consumed pending dishes. Available categories: `Snack`, `Postre`, `Saludable`, `Rápida`, `Internacional`, `Mexicana`, `Vegana`, `Vegetariana`, `Alta en proteína`.
 
-**Completing a recipe** (`RecipeDetail.js`): decrements ingredient quantities in Firestore; deletes if quantity ≤ 0; if a `Piezas` ingredient transitions from whole to fractional (`isFractioned = true`), recalculates expiry using the `fraccionado` days from `foodDatabase`. Also removes any pending dishes consumed by the recipe.
+**Completing a recipe** (`RecipeDetail.js`): uses `writeBatch` to atomically decrement/delete ingredient quantities and write the history entry in one commit. If a `Piezas` ingredient transitions from whole to fractional (`isFractioned = true`), recalculates expiry using the `fraccionado` days from `foodDatabase`. Pending dish cleanup runs outside the batch (best-effort, individual try/catch). `RecipeDetail` has a `savingAction` state (`'complete' | 'pending' | null`) that blocks double-submission while a batch is in flight.
 
-**Saving as pending dish**: `RecipeDetail.js` → calls `calculateDishShelfLife(ingredients)` via GPT-4o-mini → saves to Firestore `users/{userId}/pendingDishes` with an expiration date.
+**Saving as pending dish**: `RecipeDetail.js` → calls `calculateDishShelfLife(ingredients)` via GPT-4o-mini → uses `writeBatch` to atomically write the `pendingDishes` entry and decrement ingredient quantities in one commit.
 
 **Personal food DB**: Each user has a Firestore subcollection for custom foods with their own shelf-life data. `getFoodSuggestionsComplete()` merges global and personal results.
 
@@ -96,6 +96,14 @@ Component-level utility classes are defined with `@layer` in [src/index.css](src
 | `bg-food-pattern` | SVG star crosshatch background |
 | `bg-kitchen` | Gradient kitchen background |
 | `border-cooking` | Orange dashed double-border effect |
+
+### Critical Invariants
+
+**Firestore multi-document writes must use `writeBatch`** — never chain sequential `addDoc`/`updateDoc`/`deleteDoc` calls. If one step fails, partial writes corrupt user data. To get an auto-generated ID inside a batch (where `addDoc` isn't available), use `doc(collection(db, path))` then `batch.set(ref, data)`.
+
+**Validate `parseSafeQuantity` before arithmetic** — the function returns `{ type: 'number', number: N }` or `{ type: 'text', text: S }`. Always guard `if (parsedQty.type !== 'number' || parsedQty.number <= 0)` and show an error modal before attempting any quantity math. Skipping this guard produces a silent no-op (inventory unchanged but no error shown).
+
+**Register's `closeModal` must not reset the auth guard after successful registration** — `registrationCompleted` ref tracks whether the success modal fired; `closeModal` only calls `onRegistrationReset` when that ref is `false`.
 
 ### Environment Variables
 
